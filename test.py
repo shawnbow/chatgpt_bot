@@ -23,19 +23,23 @@ class DingTalkRobot(tornado.web.RequestHandler):
     async def post(self):
         timestamp = self.request.headers.get('timestamp', None)
         sign = self.request.headers.get('sign', None)
+        if timestamp is None or sign is None:
+            return self.finish({"errcode": 100, "msg": "无效请求"})
         if sign != self.check_sig(timestamp):
             return self.finish({"errcode": 1, "msg": "签名有误"})
         data = json.loads(self.request.body)
-        pprint(data)
         text = data['text']["content"]
         # atUsers = data.get("atUsers", None)
         # uid = data.get("senderStaffId", None)
         return self.finish({"errcode": 0, "msg": text})
 
+    async def get(self):
+        self.set_status(200)
+        return self.finish({"errcode": 0, "msg": 'hello'})
 
 def main():
     app = tornado.web.Application([(r"/", DingTalkRobot)])
-    app.listen(8888)
+    app.listen(80)
     tornado.ioloop.IOLoop.current().start()
 
 

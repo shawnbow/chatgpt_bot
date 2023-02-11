@@ -7,11 +7,9 @@ from common.log import logger
 
 if __name__ == '__main__':
     try:
-        # load config
-        config.load_config()
 
         # create channel
-        channel = channel_factory.create_channel("wx")
+        channel = channel_factory.create_channel("dt")
 
         # startup channel
         channel.startup()

@@ -1,11 +1,13 @@
 {
   "open_ai_api_key": "YOUR API KEY",
   "dingtalk": {
-    "webhook_token": "YOUR TOKEN",
-    "webhook_secret": "YOUR SECRET",
+    "receiver_url": "/",
+    "receiver_port": "80",
     "agent_id": "YOUR AgentId",
     "app_key": "YOUR AppKey",
-    "app_secret": "YOUR AppSecret"
+    "app_secret": "YOUR AppSecret",
+    "webhook_token": "YOUR TOKEN",
+    "webhook_secret": "YOUR SECRET"
   },
   "single_chat_prefix": ["bot", "@bot"],
   "single_chat_reply_prefix": "[bot] ",
