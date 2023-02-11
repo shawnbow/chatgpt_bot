@@ -34,8 +34,8 @@ class MessageHandler(tornado.web.RequestHandler):
         # sessionWebhook = data['sessionWebhook']
         # atUsers = data.get("atUsers", None)
         # uid = data.get("senderStaffId", None)
-        if self.msg_handler:
-            self.msg_handler(data)
+        if self.__class__.msg_handler:
+            self.__class__.msg_handler(data)
         return self.finish({'errcode': 0, 'msg': 'received'})
 
     def get(self):
