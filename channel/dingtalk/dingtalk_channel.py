@@ -23,7 +23,7 @@ class DingTalkChannel(Channel):
         dingtalk.bot.run()
 
     def handle(self, msg):
-        logger.debug('[DT]receive msg: ' + msg)
+        logger.debug('[DT]receive msg: ' + json.dumps(msg, ensure_ascii=False))
         group_name = msg.get('conversationTitle', None)
         sender_staff_id = msg.get('senderStaffId', None)
         sender_id = msg.get('senderId', None)
