@@ -32,6 +32,10 @@ class DingTalkChannel(Channel):
         session_web_hook = msg.get('sessionWebhook', None)
         session_webhook_expired_time = msg.get('sessionWebhookExpiredTime', None)
 
+        if content:
+            content = content.strip()
+        if not content:
+            return
         img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
         if img_match_prefix:
             content = content.split(img_match_prefix, 1)[1].strip()
