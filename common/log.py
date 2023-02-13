@@ -24,15 +24,15 @@ class Logger:
         #     level='TRACE')
         logger.add(
             self.debug_path,
-            format='{time}|{function}:<{module}>:{line}|{message}',
+            format='{time}|{level}|{function}:<{module}>:{line}|{message}',
             level='DEBUG')
         logger.add(
             self.info_path,
-            format='{time}|{function}:<{module}>:{line}|{message}',
+            format='{time}|{level}|{function}:<{module}>:{line}|{message}',
             level='INFO')
         logger.add(
             self.error_path,
-            format='{time}|{function}:<{module}>:{line}|{message}',
+            format='{time}|{level}|{function}:<{module}>:{line}|{message}',
             level='ERROR')
         self.loguru = logger
         self.info = logger.info
