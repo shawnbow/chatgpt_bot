@@ -12,8 +12,8 @@ if __name__ == '__main__':
         channel = channel_factory.create_channel("dt")
 
         # startup channel
+        logger.info("App starting up...")
         channel.startup()
-        logger.info("App startup successfully!")
     except Exception as e:
         logger.error("App startup failed!")
         logger.exception(e)
