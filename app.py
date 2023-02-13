@@ -13,6 +13,7 @@ if __name__ == '__main__':
 
         # startup channel
         channel.startup()
+        logger.info("App startup successfully!")
     except Exception as e:
         logger.error("App startup failed!")
         logger.exception(e)
