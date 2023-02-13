@@ -8,18 +8,15 @@ from channel.channel import Channel
 from concurrent.futures import ThreadPoolExecutor
 from common.log import logger
 from config import conf
-import requests
 import dingtalk.bot
-
-thread_pool = ThreadPoolExecutor(max_workers=8)
 
 
 class DingTalkChannel(Channel):
     def __init__(self):
-        pass
+        self.executor = ThreadPoolExecutor(max_workers=8)
 
     def startup(self):
-        dingtalk.bot.register_msg_handler(lambda msg: self.handle(msg))
+        dingtalk.bot.MessageHandler.register_handlers('handle_reply', lambda msg: self.handle(msg))
         dingtalk.bot.run()
 
     def handle(self, msg):
@@ -36,12 +33,13 @@ class DingTalkChannel(Channel):
             content = content.strip()
         if not content:
             return
+
         img_match_prefix = self.check_prefix(content, conf().get('image_create_prefix'))
         if img_match_prefix:
             content = content.split(img_match_prefix, 1)[1].strip()
-            thread_pool.submit(self._do_send_img, content, sender_id)
+            self.executor.submit(self._do_send_img, content, sender_id)
         else:
-            thread_pool.submit(self._do_send, content, sender_id)
+            self.executor.submit(self._do_send, content, sender_id)
 
     def send(self, msg, receiver):
         pass
@@ -55,7 +53,7 @@ class DingTalkChannel(Channel):
             reply_text = super().build_reply_content(query, context)
             if reply_text:
                 logger.info(f'[DT] sendMsg={reply_text}, receiver={reply_user_id}')
-                dingtalk.bot.default_sender.send_text(reply_text)
+                dingtalk.bot.sender().send_text(reply_text)
         except Exception as e:
             logger.exception(e)
 
@@ -68,17 +66,19 @@ class DingTalkChannel(Channel):
             img_url = super().build_reply_content(query, context)
             if img_url:
                 logger.info(f'[DT] sendImage={img_url}, receiver={reply_user_id}')
-                dingtalk.bot.default_sender.send_image(img_url)
+                dingtalk.bot.sender().send_image(img_url)
         except Exception as e:
             logger.exception(e)
 
-    def check_prefix(self, content, prefix_list):
+    @classmethod
+    def check_prefix(cls, content, prefix_list):
         for prefix in prefix_list:
             if content.startswith(prefix):
                 return prefix
         return None
 
-    def check_contain(self, content, keyword_list):
+    @classmethod
+    def check_contain(cls, content, keyword_list):
         if not keyword_list:
             return None
         for ky in keyword_list:
