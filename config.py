@@ -6,7 +6,7 @@ import json
 from pprint import pprint
 
 
-config_path = os.path.dirname(os.path.abspath( __file__ )) + '/config.json'
+config_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
 
 def read_config():

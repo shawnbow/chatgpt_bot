@@ -12,19 +12,20 @@ class Logger:
         self.log_dir = f'logs/{project}'
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
+        self.debug_path = f'{self.log_dir}/debug.log'
         self.info_path = f'{self.log_dir}/info.log'
         self.error_path = f'{self.log_dir}/error.log'
+        if rm_stderr:
+            logger.remove(0)
         # ERROR > INFO > DEBUG, 高级别的log可以打印到低级别的文件/流中, 除非低级别设置了过滤器
         # logger.add(
         #     sys.stderr,
         #     format='{time}|{function}:<{module}>:{line}|{message}',
         #     level='TRACE')
-        # logger.add(
-        #     f'{self.log_dir}/debug.log',
-        #     format='{time}|{function}:<{module}>:{line}|{message}',
-        #     level='DEBUG')
-        if rm_stderr:
-            logger.remove(0)
+        logger.add(
+            self.debug_path,
+            format='{time}|{function}:<{module}>:{line}|{message}',
+            level='DEBUG')
         logger.add(
             self.info_path,
             format='{time}|{function}:<{module}>:{line}|{message}',
