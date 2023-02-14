@@ -39,11 +39,16 @@ class MessageHandler(tornado.web.RequestHandler):
         return sign
 
     async def post(self):
+        logger.debug('[DT] headers=' + json.dumps(self.request.headers, ensure_ascii=False))
+        logger.debug('[DT] body=' + json.dumps(self.request.body, ensure_ascii=False))
+
         timestamp = self.request.headers.get('timestamp', None)
         sign = self.request.headers.get('sign', None)
         if timestamp is None or sign is None:
+            logger.error('[DT] invalid request')
             return self.finish({'errcode': 100, 'msg': 'invalid request'})
         if sign != self.check_sig(timestamp):
+            logger.error('[DT] error sign')
             return self.finish({'errcode': 1, 'msg': 'error sign'})
         data = json.loads(self.request.body)
         handler = self.__class__.handlers['handle_reply']

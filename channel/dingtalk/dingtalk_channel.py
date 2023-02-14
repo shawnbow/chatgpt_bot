@@ -20,8 +20,6 @@ class DingTalkChannel(Channel):
         dingtalk.bot.run()
 
     def handle(self, msg):
-        logger.debug('[DT]receive msg: ' + json.dumps(msg, ensure_ascii=False))
-
         content = msg.get('text', {}).get('content', None)
         content = content.strip() if content else None
         if not content:
