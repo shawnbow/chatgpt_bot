@@ -37,6 +37,7 @@ class Logger:
         self.loguru = logger
         self.info = logger.info
         self.debug = logger.debug
+        self.warn = logger.warning
         self.error = logger.error
         self.exception = logger.exception
 
