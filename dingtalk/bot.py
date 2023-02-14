@@ -49,7 +49,7 @@ class MessageHandler(tornado.web.RequestHandler):
             return self.finish({'errcode': 1, 'msg': 'error sign'})
 
         data = json.loads(self.request.body)
-        logger.debug('[DT] body=' + json.dumps(self.request.body, ensure_ascii=False))
+        logger.debug('[DT] body=' + json.dumps(data, ensure_ascii=False))
 
         handler = self.__class__.handlers['handle_reply']
         self.executor.submit(handler, data)
