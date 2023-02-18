@@ -3,6 +3,8 @@ Message sending channel abstract class
 """
 
 from bridge.bridge import Bridge
+from common.data import Reply
+
 
 class Channel(object):
     def startup(self):
@@ -13,19 +15,19 @@ class Channel(object):
 
     def handle(self, msg):
         """
-        process received msg
+        process received message
         :param msg: message object
         """
         raise NotImplementedError
 
-    def send(self, msg, receiver):
+    def send(self, reply: Reply, context):
         """
         send message to user
-        :param msg: message content
-        :param receiver: receiver channel account
+        :param reply: message content
+        :param context: context
         :return: 
         """
         raise NotImplementedError
 
-    def build_reply_content(self, query, context=None):
-        return Bridge().fetch_reply_content(query, context)
+    def fetch_reply(self, content, context=None) -> Reply:
+        return Bridge().fetch_reply(content, context)

@@ -1,6 +1,5 @@
 # encoding:utf-8
 
-import config
 from channel import channel_factory
 from common.log import logger
 

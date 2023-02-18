@@ -1,37 +1,67 @@
 # encoding:utf-8
-
-from common.log import logger
 import os
 import json
 from pprint import pprint
 
 
-config_path = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+class Config:
+    workdir = os.path.dirname(os.path.abspath(__file__))
+    config_path = f'{workdir}/config.json'
+
+    config = dict()
+
+    @classmethod
+    def load(cls):
+        if not os.path.exists(cls.config_path):
+            raise Exception('配置文件不存在, 请根据config-template.json模板创建config.json文件')
+        try:
+            with open(cls.config_path, 'r') as f:
+                cls.config = json.load(f)
+        except Exception as e:
+            raise Exception('读取配置文件失败, 请根据config-template.json模板创建config.json文件')
+
+    @classmethod
+    def save(cls):
+        try:
+            with open(cls.config_path, 'w') as f:
+                json.dump(cls.config, f, indent=4)
+        except Exception as e:
+            raise Exception('保存配置文件失败!')
+
+    @classmethod
+    def set(cls, key, value):
+        cls.config[key] = value
+        cls.save()
+
+    @classmethod
+    def get(cls, key=None, default=None):
+        if not key:
+            return cls.config
+        return cls.config.get(key, default)
+
+    @classmethod
+    def db_path(cls):
+        return f'{cls.workdir}/{cls.get("db_path", "db")}'
+
+    @classmethod
+    def log_path(cls):
+        return f'{cls.workdir}/{cls.get("log_path", "logs")}'
+
+    @classmethod
+    def openai(cls, key=None):
+        if not key:
+            return cls.get('openai', {})
+        return cls.get('openai', {}).get(key, None)
+
+    @classmethod
+    def dt(cls, key=None):
+        if not key:
+            return cls.get('dt', {})
+        return cls.get('dt', {}).get(key, None)
 
 
-def read_config():
-    if not os.path.exists(config_path):
-        raise Exception('配置文件不存在，请根据config-template.json模板创建config.json文件')
-
-    try:
-        with open(config_path, 'r') as f:
-            return json.load(f)
-    except Exception as e:
-        return None
-
-
-def update_config():
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=4)
-
-
-# fill configs
-config = read_config()
-
-
-def conf():
-    return config
+Config.load()
 
 
 if __name__ == "__main__":
-    pprint(config)
+    pprint(Config.get())

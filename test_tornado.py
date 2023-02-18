@@ -7,7 +7,7 @@ import arrow
 from typing import Dict, Callable
 from collections import defaultdict
 
-from config import conf
+from config import Config
 import time
 import tornado.ioloop
 import tornado.web
@@ -46,13 +46,12 @@ class MessageHandler(tornado.web.RequestHandler):
 
 def run():
     url_map = [
-        (r'%s' % conf()['dingtalk']['receiver_url'], MessageHandler),
+        (r'%s' % Config.dt('server_url'), MessageHandler),
     ]
     app = tornado.web.Application(url_map)
-    app.listen(conf()['dingtalk']['receiver_port'])
+    app.listen(Config.dt('server_port'))
     tornado.ioloop.IOLoop.current().start()
 
 
 if __name__ == '__main__':
-    MessageHandler.handler = lambda x: print(x)
     run()

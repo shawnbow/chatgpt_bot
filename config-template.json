@@ -1,19 +1,28 @@
 {
-  "open_ai_api_key": "YOUR API KEY",
-  "dingtalk": {
-    "receiver_url": "/",
-    "receiver_port": "80",
+  "db_path": "db",
+  "log_path": "logs",
+  "dt": {
+    "group_name": ["GPT-TEST"],
+    "admin_user_id": "",
+    "server_url": "/",
+    "server_port": "80",
     "agent_id": "YOUR AgentId",
     "app_key": "YOUR AppKey",
     "app_secret": "YOUR AppSecret",
     "webhook_token": "YOUR TOKEN",
     "webhook_secret": "YOUR SECRET"
   },
-  "single_chat_prefix": ["bot", "@bot"],
-  "single_chat_reply_prefix": "[bot] ",
-  "group_chat_prefix": ["@bot"],
-  "group_name_white_list": ["ChatGPT测试群", "ChatGPT测试群2"],
-  "image_create_prefix": ["画", "看", "找", "draw"],
-  "conversation_max_tokens": 1000,
-  "character_desc": "你是ChatGPT, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+  "openai": {
+    "api_key": "YOUR API KEY",
+    "retry_times": 2,
+    "retry_interval": 3,
+    "cmd_prefix": ["/", "cmd", "执行"],
+    "code_prefix": ["#", "code", "代码"],
+    "image_prefix": ["*", "draw", "画", "看", "找"],
+    "text_model": "text-davinci-003",
+    "code_model": "code-davinci-002",
+    "max_query_tokens": 2000,
+    "max_reply_tokens": 2000,
+    "character": "你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+  }
 }

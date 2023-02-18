@@ -13,7 +13,7 @@ from tornado.concurrent import run_on_executor
 from dingtalkchatbot.chatbot import DingtalkChatbot
 from concurrent.futures import ThreadPoolExecutor
 
-from config import conf
+from config import Config
 from common.utils import BoostDict
 from common.log import logger
 
@@ -21,13 +21,9 @@ from common.log import logger
 class MessageHandler(tornado.web.RequestHandler):
     executor = ThreadPoolExecutor(max_workers=8)
 
-    app_secret = conf()['dingtalk']['app_secret']
+    app_secret = Config.dt('app_secret')
 
     handlers: Dict[str, Callable] = BoostDict(lambda k: (lambda data: logger.error(f'empty callback: key={k} data={data}')))
-
-    @classmethod
-    def register_handlers(cls, key, callback):
-        cls.handlers[key] = callback
 
     @classmethod
     def check_sig(cls, timestamp):
@@ -51,7 +47,7 @@ class MessageHandler(tornado.web.RequestHandler):
         data = json.loads(self.request.body)
         logger.debug('[DT] body=' + json.dumps(data, ensure_ascii=False))
 
-        handler = self.__class__.handlers['handle_reply']
+        handler = self.__class__.handlers['msg_handler']
         self.executor.submit(handler, data)
         return self.finish({'errcode': 0, 'msg': 'received'})
 
@@ -68,21 +64,27 @@ class MessageHandler(tornado.web.RequestHandler):
         return self.finish({'errcode': 0, 'msg': _now})
 
 
-def sender(session_webhook=None, session_webhook_expired_time=None) -> DingtalkChatbot:
-    if session_webhook and session_webhook_expired_time and session_webhook_expired_time > arrow.now().int_timestamp * 1000:
-        return DingtalkChatbot(session_webhook)
-    else:
-        return DingtalkChatbot(conf()['dingtalk']['webhook_token'], secret=conf()['dingtalk']['webhook_secret'])
+class Service:
+    @staticmethod
+    def register_handlers(key, callback):
+        MessageHandler.handlers[key] = callback
 
+    @staticmethod
+    def run():
+        url_map = [
+            (r'%s' % Config.dt('server_url'), MessageHandler),
+        ]
+        app = tornado.web.Application(url_map)
+        app.listen(Config.dt('server_port'))
+        tornado.ioloop.IOLoop.current().start()
 
-def run():
-    url_map = [
-        (r'%s' % conf()['dingtalk']['receiver_url'], MessageHandler),
-    ]
-    app = tornado.web.Application(url_map)
-    app.listen(conf()['dingtalk']['receiver_port'])
-    tornado.ioloop.IOLoop.current().start()
+    @staticmethod
+    def sender(session_webhook=None, session_webhook_expired_time=None) -> DingtalkChatbot:
+        if session_webhook and session_webhook_expired_time and session_webhook_expired_time > arrow.now().int_timestamp * 1000:
+            return DingtalkChatbot(session_webhook)
+        else:
+            return DingtalkChatbot(Config.dt('webhook_token'), secret=Config.dt('webhook_secret'))
 
 
 if __name__ == '__main__':
-    run()
+    Service.run()

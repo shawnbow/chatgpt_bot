@@ -2,14 +2,14 @@ import os
 import sys
 from pprint import pprint
 from datetime import datetime
-import traceback
+from config import Config
 
 
 class Logger:
     def __init__(self, project: str, rm_stderr: bool = False):
         from loguru import logger
 
-        self.log_dir = f'logs/{project}'
+        self.log_dir = f'{Config.log_path()}/{project}'
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         self.debug_path = f'{self.log_dir}/debug.log'
