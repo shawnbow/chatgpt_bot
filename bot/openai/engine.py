@@ -52,7 +52,7 @@ class OpenAIBot(Bot):
                 '/机器人性格\n' \
                 '/机器人性格=你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
-        elif context.startswith('机器人性格'):
+        elif content.startswith('机器人性格'):
             _tmp = content.split('=', 1)
             if len(_tmp) == 0:
                 char = session.character
@@ -61,10 +61,10 @@ class OpenAIBot(Bot):
                 session.profile.set('character', _tmp[1])
                 msg = f'用户名={user_name}, 用户ID={user_id}, 设置性格为: {_tmp[1]}'
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
-        elif context.startswith('重启会话'):
+        elif content.startswith('重启会话'):
             session.reset_records()
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
-        elif context.startswith('最近会话'):
+        elif content.startswith('最近会话'):
             return Reply(
                 by='openai_cmd', type='TEXT', result='done',
                 msg=session.build_query(''))
