@@ -24,6 +24,7 @@ class OpenAIBot(Bot):
         return None, content
 
     def reply(self, content, context=None) -> Reply:
+        logger.debug(f'[OPENAI] reply content={content}')
         _cmd_prefix, content = self.prefix_parser(content, self.config['cmd_prefix'])
         if _cmd_prefix:
             return self.reply_cmd(content, context)
@@ -39,6 +40,8 @@ class OpenAIBot(Bot):
         return self.reply_text(content, context)
 
     def reply_cmd(self, content, context):
+        logger.debug(f'[OPENAI] reply_cmd content={content}')
+
         user_id = context['user_id']
         user_name = context['user_name']
         session = Session(user_id)
@@ -59,8 +62,8 @@ class OpenAIBot(Bot):
                 msg = f'用户名={user_name}, 用户ID={user_id}, 设置性格为: {_tmp[1]}'
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
             else:
-                char = session.character
-                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'当前性格是: {char}')
+                msg = session.character
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'当前性格是: {msg}')
         elif content.startswith('重启会话'):
             session.reset_records()
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
@@ -72,11 +75,12 @@ class OpenAIBot(Bot):
             return Reply(by='openai_cmd', type='TEXT', result='error', msg='不支持该命令!')
 
     def reply_code(self, content, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_code content={content}')
+
         user_id = context['user_id']
         user_name = context['user_name']
 
         try:
-            logger.debug(f'[OPENAI] code query={content}')
             response = openai.Completion.create(
                 model=self.config['code_model'],  # 对话模型的名称
                 prompt=content,
@@ -87,7 +91,7 @@ class OpenAIBot(Bot):
                 presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
             )
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
-            logger.debug(f'[OPENAI] code reply={answer}')
+            logger.debug(f'[OPENAI] reply_code answer={answer}')
             return Reply(by=f'reply_code', type='TEXT', result='done', msg=answer)
         except openai.error.RateLimitError as e:
             # rate limit exception
@@ -104,13 +108,14 @@ class OpenAIBot(Bot):
             return Reply(by=f'reply_code', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
     def reply_text(self, content, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_text content={content}')
+
         user_id = context['user_id']
         user_name = context['user_name']
         session = Session(user_id)
 
         query = session.build_query(content)
         try:
-            logger.debug(f'[OPENAI] text query={content}')
             response = openai.Completion.create(
                 model=self.config['text_model'],  # 对话模型的名称
                 prompt=query,
@@ -122,7 +127,7 @@ class OpenAIBot(Bot):
                 stop=["\n#\n"]
             )
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
-            logger.debug(f'[OPENAI] text reply={answer}')
+            logger.debug(f'[OPENAI] reply_text answer={answer}')
             session.add_record(content, answer)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
         except openai.error.RateLimitError as e:
@@ -141,18 +146,19 @@ class OpenAIBot(Bot):
             return Reply(by=f'reply_text', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
     def reply_img(self, content, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_img content={content}')
+
         user_id = context['user_id']
         user_name = context['user_name']
 
         try:
-            logger.debug(f'[OPENAI] image query={content}')
             response = openai.Image.create(
                 prompt=content,  # 图片描述
                 n=1,             # 每次生成图片的数量
                 size="512x512"   # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
-            logger.debug(f'[OPENAI] image reply={image_url}')
+            logger.debug(f'[OPENAI] reply_img answer={image_url}')
             return Reply(by='openai_img', type='IMAGE', result='done', msg=image_url)
         except openai.error.RateLimitError as e:
             logger.warn(e)

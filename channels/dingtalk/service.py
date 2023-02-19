@@ -4,7 +4,7 @@ import hashlib
 import base64
 import json
 import arrow
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 import tornado.ioloop
 import tornado.web
@@ -45,26 +45,24 @@ class MessageHandler(tornado.web.RequestHandler):
             return self.finish({'errcode': 1, 'msg': 'error sign'})
 
         data = json.loads(self.request.body)
-        logger.debug('[DT] body=' + json.dumps(data, ensure_ascii=False))
-
         handler = self.__class__.handlers['msg_handler']
         self.executor.submit(handler, data)
         return self.finish({'errcode': 0, 'msg': 'received'})
 
     async def sleep_asyncio(self):
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
         return arrow.now().format()
 
     async def get(self):
-        logger.info(f'begin get {arrow.now().format()}')
+        logger.debug(f'begin get {arrow.now().format()}')
         _now = await self.sleep_asyncio()
-        logger.info(f'done get {_now}')
+        logger.debug(f'done get {_now}')
 
         self.set_status(200)
         return self.finish({'errcode': 0, 'msg': _now})
 
 
-class Service:
+class DingTalk:
     @staticmethod
     def register_handlers(key, callback):
         MessageHandler.handlers[key] = callback
@@ -79,12 +77,26 @@ class Service:
         tornado.ioloop.IOLoop.current().start()
 
     @staticmethod
-    def sender(session_webhook=None, session_webhook_expired_time=None) -> DingtalkChatbot:
-        if session_webhook and session_webhook_expired_time and session_webhook_expired_time > arrow.now().int_timestamp * 1000:
+    def sender(context) -> Optional[DingtalkChatbot]:
+        session_webhook = context['session_webhook']
+        expired_time = context['session_webhook_expired_time']
+        group_id = context['conversation_id']
+        _now = int(arrow.now().float_timestamp * 1000)
+
+        if session_webhook and expired_time and _now < expired_time:
+            # session webhook not expired
             return DingtalkChatbot(session_webhook)
-        else:
-            return DingtalkChatbot(Config.dt('webhook_token'), secret=Config.dt('webhook_secret'))
+
+        if group_id:
+            # use group bot webhook config
+            webhook = Config.dt('webhooks').get(group_id, {})
+            webhook_token = webhook.get('webhook_token', None)
+            webhook_secret = webhook.get('webhook_secret', None)
+            if webhook_token:
+                return DingtalkChatbot(webhook_token, secret=webhook_secret)
+
+        return None
 
 
 if __name__ == '__main__':
-    Service.run()
+    DingTalk.run()

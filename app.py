@@ -1,6 +1,6 @@
 # encoding:utf-8
 
-from channel import channel_factory
+from channels.channel_factory import create_channel
 from common.log import logger
 
 
@@ -8,7 +8,7 @@ if __name__ == '__main__':
     try:
 
         # create channel
-        channel = channel_factory.create_channel("dt")
+        channel = create_channel("dt")
 
         # startup channel
         logger.info("App starting up...")
