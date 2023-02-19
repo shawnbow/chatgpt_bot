@@ -40,10 +40,13 @@ class DingTalkChannel(Channel):
             logger.exception(e)
             reply = Reply(by='dt', type='TEXT', result='exception', msg='出错了, 再发送一次')
 
-        self.send(reply, context)
+        try:
+            self.send(reply, context)
+        except Exception as e:
+            logger.exception(e)
 
     def send(self, reply: Reply, context):
-        logger.info(f'[DT] reply by={reply.by}, type={reply.type}, result={reply.result}, msg={reply.msg} to={context["sender_id"]}')
+        logger.info(f'[DT] reply by={reply.by}, type={reply.type}, result={reply.result}, msg={reply.msg}')
 
         sender = dtchat.sender(context['session_webhook'], context['session_webhook_expired_time'])
 
