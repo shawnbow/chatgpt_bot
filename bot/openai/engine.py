@@ -6,7 +6,7 @@ from bot.bot import Bot
 from config import Config
 from common.log import logger
 from common.data import Reply
-from .session import Session
+from .session import SessionManager
 
 
 class OpenAIBot(Bot):
@@ -44,33 +44,70 @@ class OpenAIBot(Bot):
 
         user_id = context['user_id']
         user_name = context['user_name']
-        session = Session(user_id)
+        sm = SessionManager(user_id)
+        joined_session = sm.joined_session
 
         if content.startswith('help'):
             msg = \
                 '命令格式如下: \n' \
                 '/help\n' \
-                '/重启会话\n' \
-                '/最近会话\n' \
-                '/机器人性格\n' \
-                '/机器人性格=你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n'
+                '/新建对话%[标题]%[性格]\n' \
+                '/对话列表\n' \
+                '/切换对话%<对话ID>\n' \
+                '/重启对话\n' \
+                '/最近对话\n' \
+                '/性格\n' \
+                '/性格%你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
-        elif content.startswith('机器人性格'):
-            if content.startswith('机器人性格='):
-                _tmp = content.split('=', 1)
-                session.profile.set('character', _tmp[1])
-                msg = f'用户名={user_name}, 用户ID={user_id}, 设置性格为: {_tmp[1]}'
-                return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
+
+        elif content.startswith('新建对话'):
+            _tmp = content.split('%', 2)
+            if len(_tmp) == 2:
+                new_session_id = sm.new_session(title=_tmp[1])
+            elif len(_tmp) == 3:
+                new_session_id = sm.new_session(title=_tmp[1], character=_tmp[2])
             else:
-                msg = session.character
-                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'当前性格是: {msg}')
-        elif content.startswith('重启会话'):
-            session.reset_records()
+                new_session_id = sm.new_session()
+            new_session = sm.join_session(new_session_id)
+            return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'新建对话: {new_session["title"]}, 性格: {new_session["character"]}')
+
+        elif content.startswith('对话列表'):
+            sessions = sm.sessions
+            msg = ''
+            for s in sessions:
+                msg += f'\n对话ID: {s["session_id"]}, 标题: {s["title"]}, 性格: {s["character"]}'
+            return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
+
+        elif content.startswith('切换对话%'):
+            _tmp = content.split('%', 1)
+            if len(_tmp) == 2:
+                sessions = sm.sessions
+                session_id = _tmp[1].strip()
+                for s in sessions:
+                    if s['session_id'] == session_id:
+                        session = sm.join_session(session_id)
+                        return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'切换对话: {session["title"]}, 性格: {session["character"]}')
+            return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'对话不存在!')
+
+        elif content.startswith('重启对话'):
+            sm.reset_records(joined_session['session_id'])
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
-        elif content.startswith('最近会话'):
+
+        elif content.startswith('最近对话'):
             return Reply(
                 by='openai_cmd', type='TEXT', result='done',
-                msg=session.build_query(''))
+                msg=sm.build_query(joined_session['session_id'], ''))
+
+        elif content.startswith('性格'):
+            _tmp = content.split('%', 1)
+            if len(_tmp) == 2:
+                sm.set_session(joined_session['session_id'], character=_tmp[1])
+                msg = f'对话{joined_session["title"]}的性格设置为: {_tmp[1]}'
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
+            else:
+                msg = joined_session.get('character', Config.openai('character'))
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'对话{joined_session["title"]}的性格是: {msg}')
+
         else:
             return Reply(by='openai_cmd', type='TEXT', result='error', msg='不支持该命令!')
 
@@ -116,12 +153,14 @@ class OpenAIBot(Bot):
 
         user_id = context['user_id']
         user_name = context['user_name']
-        session = Session(user_id)
+        sm = SessionManager(user_id)
+        joined_session = sm.joined_session
+        session_id = joined_session['session_id']
 
         try:
             model = self.config['text_model']
             max_tokens = self.config['max_reply_tokens']
-            query = session.build_query(content)
+            query = sm.build_query(session_id, content)
             logger.debug(f'[OPENAI] create completion model={model} prompt={query}')
             response = openai.Completion.create(
                 model=model,  # 对话模型的名称
@@ -135,7 +174,7 @@ class OpenAIBot(Bot):
             )
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
             logger.debug(f'[OPENAI] reply_text answer={answer}')
-            session.add_record(content, answer)
+            sm.add_record(session_id, content, answer)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
         except openai.error.RateLimitError as e:
             # rate limit exception
@@ -149,7 +188,7 @@ class OpenAIBot(Bot):
         except Exception as e:
             # unknown exception
             logger.exception(e)
-            # session.reset_records()
+            # sm.reset_records(session_id)
             return Reply(by=f'reply_text', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
     def reply_img(self, content, context, retry_count=0):

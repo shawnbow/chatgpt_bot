@@ -10,6 +10,26 @@ from collections import defaultdict
 from functools import wraps
 
 
+# 数字编码器
+class IntEncoder:
+    @classmethod
+    def int_to_bytes(cls, x: int) -> bytes:
+        return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+
+    @classmethod
+    def int_from_bytes(cls, x_bytes: bytes) -> int:
+        return int.from_bytes(x_bytes, 'big')
+
+    @classmethod
+    def encode_int(cls, i: int):
+        return base64.b64encode(cls.int_to_bytes(i)).decode('ascii').replace('=', '').replace('/', '').replace('+', '')
+
+    @classmethod
+    def encode_now(cls):
+        # 946684800000 -> 2000-01-01 00:00:00 UTC
+        return cls.encode_int(int(time.time() * 1000) - 946684800000)
+
+
 # defaultdict 增强版
 class BoostDict(defaultdict):
     def __init__(self, boost_factory):
