@@ -75,7 +75,11 @@ class OpenAIBot(Bot):
             sessions = sm.sessions
             msg = ''
             for s in sessions:
-                msg += f'\n对话ID: {s["session_id"]}, 标题: {s["title"]}, 性格: {s["character"]}'
+                if s['session_id'] == joined_session['session_id']:
+                    msg += f'\n>>>>'
+                else:
+                    msg += f'\n----'
+                msg += f'对话ID: {s["session_id"]}, 标题: {s["title"]}, 性格: {s["character"]}'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
 
         elif content.startswith('切换对话%'):
