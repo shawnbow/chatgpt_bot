@@ -15,39 +15,39 @@ class OpenAIBot(Bot):
         openai.api_key = self.config['api_key']
 
     @classmethod
-    def prefix_parser(cls, content, prefix_list) -> (str, str):
+    def prefix_parser(cls, query, prefix_list) -> (str, str):
+        query = query.strip()
         for prefix in prefix_list:
-            if content.lower().startswith(prefix.lower()):
-                _tmp = re.split(prefix, content, maxsplit=1, flags=re.IGNORECASE)
+            if query.lower().startswith(prefix.lower()):
+                _tmp = re.split(prefix, query, maxsplit=1, flags=re.IGNORECASE)
                 if len(_tmp) > 1:
                     return prefix, _tmp[1].strip()
-        return None, content
+        return None, query
 
-    def reply(self, content, context=None) -> Reply:
-        logger.debug(f'[OPENAI] reply content={content}')
-        _cmd_prefix, content = self.prefix_parser(content, self.config['cmd_prefix'])
-        if _cmd_prefix:
-            return self.reply_cmd(content, context)
+    def reply(self, context) -> Reply:
+        logger.debug(f'[OPENAI] reply query={context.query}')
+        _cmd_prefix, query = self.prefix_parser(context.query, self.config['cmd_prefix'])
+        if _cmd_prefix or query == '':
+            return self.reply_cmd(query, context)
 
-        _image_prefix, content = self.prefix_parser(content, self.config['image_prefix'])
+        _image_prefix, query = self.prefix_parser(context.query, self.config['image_prefix'])
         if _image_prefix:
-            return self.reply_img(content, context)
+            return self.reply_img(query, context)
 
-        _code_prefix, content = self.prefix_parser(content, self.config['code_prefix'])
+        _code_prefix, query = self.prefix_parser(context.query, self.config['code_prefix'])
         if _code_prefix:
-            return self.reply_code(content, context)
+            return self.reply_code(query, context)
 
-        return self.reply_text(content, context)
+        query = context.query.strip()
+        return self.reply_text(query, context)
 
-    def reply_cmd(self, content, context):
-        logger.debug(f'[OPENAI] reply_cmd content={content}')
+    def reply_cmd(self, query, context):
+        logger.debug(f'[OPENAI] reply_cmd query={query}')
 
-        user_id = context['user_id']
-        user_name = context['user_name']
-        sm = SessionManager(user_id)
+        sm = SessionManager(context)
         joined_session = sm.joined_session
 
-        if content.startswith('help'):
+        if query.startswith('help') or query == '':
             msg = \
                 '命令格式如下: \n' \
                 '/help\n' \
@@ -60,8 +60,8 @@ class OpenAIBot(Bot):
                 '/性格%你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
 
-        elif content.startswith('新建对话'):
-            _tmp = content.split('%', 2)
+        elif query.startswith('新建对话'):
+            _tmp = query.split('%', 2)
             if len(_tmp) == 2:
                 new_session_id = sm.new_session(title=_tmp[1])
             elif len(_tmp) == 3:
@@ -71,7 +71,7 @@ class OpenAIBot(Bot):
             new_session = sm.join_session(new_session_id)
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'新建对话: {new_session["title"]}, 性格: {new_session["character"]}')
 
-        elif content.startswith('对话列表'):
+        elif query.startswith('对话列表'):
             sessions = sm.sessions
             msg = ''
             for s in sessions:
@@ -82,8 +82,8 @@ class OpenAIBot(Bot):
                 msg += f'对话ID: {s["session_id"]}, 标题: {s["title"]}, 性格: {s["character"]}'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
 
-        elif content.startswith('切换对话%'):
-            _tmp = content.split('%', 1)
+        elif query.startswith('切换对话%'):
+            _tmp = query.split('%', 1)
             if len(_tmp) == 2:
                 sessions = sm.sessions
                 session_id = _tmp[1].strip()
@@ -93,17 +93,17 @@ class OpenAIBot(Bot):
                         return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'切换对话: {session["title"]}, 性格: {session["character"]}')
             return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'对话不存在!')
 
-        elif content.startswith('重启对话'):
+        elif query.startswith('重启对话'):
             sm.reset_records(joined_session['session_id'])
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
 
-        elif content.startswith('最近对话'):
+        elif query.startswith('最近对话'):
             return Reply(
                 by='openai_cmd', type='TEXT', result='done',
-                msg=sm.build_query(joined_session['session_id'], ''))
+                msg=sm.build_prompt(joined_session['session_id'], ''))
 
-        elif content.startswith('性格'):
-            _tmp = content.split('%', 1)
+        elif query.startswith('性格'):
+            _tmp = query.split('%', 1)
             if len(_tmp) == 2:
                 sm.set_session(joined_session['session_id'], character=_tmp[1])
                 msg = f'对话{joined_session["title"]}的性格设置为: {_tmp[1]}'
@@ -115,20 +115,17 @@ class OpenAIBot(Bot):
         else:
             return Reply(by='openai_cmd', type='TEXT', result='error', msg='不支持该命令!')
 
-    def reply_code(self, content, context, retry_count=0):
-        logger.debug(f'[OPENAI] reply_code content={content}')
-
-        user_id = context['user_id']
-        user_name = context['user_name']
+    def reply_code(self, query, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_code query={query}')
 
         try:
+            prompt = query
             model = self.config['code_model']
             max_tokens = self.config['max_reply_tokens']
-            query = content
             logger.debug(f'[OPENAI] create completion model={model} prompt={query}')
             response = openai.Completion.create(
                 model=model,  # 对话模型的名称
-                prompt=query,
+                prompt=prompt,
                 temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
                 max_tokens=max_tokens,  # 回复最大的字符数
                 top_p=1,
@@ -144,7 +141,7 @@ class OpenAIBot(Bot):
             if retry_count < self.config['retry_times']:
                 time.sleep(self.config['retry_interval'])
                 logger.warn(f'[OPENAI] completion rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_code(content, context, retry_count+1)
+                return self.reply_code(query, context, retry_count+1)
             else:
                 return Reply(by=f'reply_code', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
         except Exception as e:
@@ -152,23 +149,21 @@ class OpenAIBot(Bot):
             logger.exception(e)
             return Reply(by=f'reply_code', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
-    def reply_text(self, content, context, retry_count=0):
-        logger.debug(f'[OPENAI] reply_text content={content}')
+    def reply_text(self, query, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_text query={query}')
 
-        user_id = context['user_id']
-        user_name = context['user_name']
-        sm = SessionManager(user_id)
+        sm = SessionManager(context)
         joined_session = sm.joined_session
         session_id = joined_session['session_id']
 
         try:
             model = self.config['text_model']
             max_tokens = self.config['max_reply_tokens']
-            query = sm.build_query(session_id, content)
-            logger.debug(f'[OPENAI] create completion model={model} prompt={query}')
+            prompt = sm.build_prompt(session_id, query)
+            logger.debug(f'[OPENAI] create completion model={model} prompt={prompt}')
             response = openai.Completion.create(
                 model=model,  # 对话模型的名称
-                prompt=query,
+                prompt=prompt,
                 temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
                 max_tokens=max_tokens,  # 回复最大的字符数
                 top_p=1,
@@ -178,32 +173,32 @@ class OpenAIBot(Bot):
             )
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
             logger.debug(f'[OPENAI] reply_text answer={answer}')
-            sm.add_record(session_id, content, answer)
+            sm.add_record(session_id, query, answer)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
+
         except openai.error.RateLimitError as e:
             # rate limit exception
             logger.warn(e)
             if retry_count < self.config['retry_times']:
                 time.sleep(self.config['retry_interval'])
                 logger.warn(f'[OPENAI] completion rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_text(content, context, retry_count+1)
+                return self.reply_text(query, context, retry_count+1)
             else:
                 return Reply(by=f'reply_text', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
+
         except Exception as e:
             # unknown exception
             logger.exception(e)
             # sm.reset_records(session_id)
             return Reply(by=f'reply_text', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
-    def reply_img(self, content, context, retry_count=0):
-        logger.debug(f'[OPENAI] reply_img content={content}')
-
-        user_id = context['user_id']
-        user_name = context['user_name']
+    def reply_img(self, query, context, retry_count=0):
+        logger.debug(f'[OPENAI] reply_img query={query}')
 
         try:
+            prompt = query
             response = openai.Image.create(
-                prompt=content,  # 图片描述
+                prompt=prompt,  # 图片描述
                 n=1,             # 每次生成图片的数量
                 size="512x512"   # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
@@ -215,7 +210,7 @@ class OpenAIBot(Bot):
             if retry_count < self.config['retry_times']:
                 time.sleep(self.config['retry_interval'])
                 logger.warn(f'[OPENAI] rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_img(content, context, retry_count+1)
+                return self.reply_img(query, context, retry_count+1)
             else:
                 return Reply(by='openai_img', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
         except Exception as e:

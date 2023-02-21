@@ -14,6 +14,7 @@ from dingtalkchatbot.chatbot import DingtalkChatbot
 from concurrent.futures import ThreadPoolExecutor
 
 from config import Config
+from common.data import Context
 from common.utils import BoostDict
 from common.log import logger
 
@@ -77,10 +78,10 @@ class DingTalk:
         tornado.ioloop.IOLoop.current().start()
 
     @staticmethod
-    def sender(context) -> Optional[DingtalkChatbot]:
-        session_webhook = context['session_webhook']
-        expired_time = context['session_webhook_expired_time']
-        group_id = context['conversation_id']
+    def sender(context: Context) -> Optional[DingtalkChatbot]:
+        session_webhook = context.extra['session_webhook']
+        expired_time = context.extra['session_webhook_expired_time']
+        group_id = context.extra['conversation_id']
         _now = int(arrow.now().float_timestamp * 1000)
 
         if session_webhook and expired_time and _now < expired_time:

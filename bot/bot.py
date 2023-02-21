@@ -1,14 +1,13 @@
 """
 Auto-replay chat robot abstract class
 """
-from common.data import Reply
+from common.data import Reply, Context
 
 
 class Bot(object):
-    def reply(self, content, context=None) -> Reply:
+    def reply(self, context: Context) -> Reply:
         """
-        bot auto-reply content
-        :param content: received message
+        bot auto-reply
         :param context: context info
         :return: Reply
         """

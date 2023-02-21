@@ -1,5 +1,6 @@
 import arrow
 from config import Config
+from common.data import Context
 from common.utils import IntEncoder
 from common.db import TinyDBHelper
 from tinydb.table import Document
@@ -9,13 +10,17 @@ import hashlib
 
 
 class SessionManager:
-    def __init__(self, user_id, platform='DingTalk'):
-        self.user_id = user_id
-        self.session_db = f'openai/{hashlib.md5(user_id.encode(encoding="UTF-8")).hexdigest()}.json'
+    def __init__(self, context: Context):
+        self.context = context
+        self.user_id = context.user_id
+        self.session_db = f'openai/{hashlib.md5(self.user_id.encode(encoding="UTF-8")).hexdigest()}.json'
         self.t_user_profile = 'user_profile'
         self.t_sessions_profile = 'sessions_profile'
+
         if not self.user_profile:
-            self.set_user_profile(user_id=user_id, joined_session='', platform=platform, state=1)
+            # init user profile for new user
+            self.set_user_profile(
+                user_id=self.user_id, joined_session='', platform=self.context.platform, state=1)
 
     @property
     def user_profile(self):
@@ -132,7 +137,7 @@ class SessionManager:
                 'created_at': int(arrow.now().float_timestamp * 1000),
             })
 
-    def build_query(self, session_id, content):
+    def build_prompt(self, session_id, query):
         prompt = self.get_session(session_id).get('character', Config.openai('character'))
         prompt += '\n#\n'
         records = self.get_records(session_id, Config.openai('max_query_tokens'))
@@ -141,11 +146,11 @@ class SessionManager:
                 prompt += 'Q: ' + _r["question"] + '\n' + \
                           'A: ' + _r["answer"] + \
                           '\n#\n'
-            prompt += "Q: " + content + '\n' + \
+            prompt += "Q: " + query + '\n' + \
                       'A: '
             return prompt
         else:
-            return prompt + "Q: " + content + "\nA: "
+            return prompt + "Q: " + query + "\nA: "
 
 
 if __name__ == '__main__':
@@ -153,6 +158,6 @@ if __name__ == '__main__':
     # sm.new_session('音乐家', '你是666')
     print(sm.get_session('qgShI6s'))
     sm.add_record('qgShI6s', 'QQQ', 'AAA')
-    print(sm.build_query('qgShI6s', 'test'))
+    print(sm.build_prompt('qgShI6s', 'test'))
     sm.join_session('qgShI6s')
     print(sm.user_profile)
