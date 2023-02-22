@@ -24,21 +24,22 @@ class OpenAIBot(Bot):
                     return prefix, _tmp[1].strip()
         return None, query
 
-    def reply(self, context) -> Reply:
-        logger.debug(f'[OPENAI] reply query={context.query}')
-        _cmd_prefix, query = self.prefix_parser(context.query, self.config['cmd_prefix'])
+    def reply(self, query, context):
+        query = query.msg
+        logger.debug(f'[OPENAI] reply query={query}')
+        _cmd_prefix, query = self.prefix_parser(query, self.config['cmd_prefix'])
         if _cmd_prefix or query == '':
             return self.reply_cmd(query, context)
 
-        _image_prefix, query = self.prefix_parser(context.query, self.config['image_prefix'])
+        _image_prefix, query = self.prefix_parser(query, self.config['image_prefix'])
         if _image_prefix:
             return self.reply_img(query, context)
 
-        _code_prefix, query = self.prefix_parser(context.query, self.config['code_prefix'])
+        _code_prefix, query = self.prefix_parser(query, self.config['code_prefix'])
         if _code_prefix:
             return self.reply_code(query, context)
 
-        query = context.query.strip()
+        query = query.strip()
         return self.reply_text(query, context)
 
     def reply_cmd(self, query, context):

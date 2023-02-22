@@ -21,13 +21,13 @@ class IntEncoder:
         return int.from_bytes(x_bytes, 'big')
 
     @classmethod
-    def encode_int(cls, i: int):
-        return base64.b64encode(cls.int_to_bytes(i)).decode('ascii').replace('=', '').replace('/', '').replace('+', '')
+    def encode_int(cls, i: int, prefix='int'):
+        return prefix + base64.b64encode(cls.int_to_bytes(i)).decode('ascii').replace('=', '').replace('/', '').replace('+', '')
 
     @classmethod
-    def encode_now(cls):
+    def encode_now(cls, prefix='time'):
         # 946684800000 -> 2000-01-01 00:00:00 UTC
-        return cls.encode_int(int(time.time() * 1000) - 946684800000)
+        return cls.encode_int(int(time.time() * 1000), prefix=prefix)
 
 
 # defaultdict 增强版

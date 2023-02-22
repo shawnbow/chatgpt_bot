@@ -3,7 +3,7 @@ Message sending channel abstract class
 """
 
 from bridge.bridge import Bridge
-from common.data import Reply, Context
+from common.data import Reply, Context, Query
 
 
 class Channel(object):
@@ -20,7 +20,7 @@ class Channel(object):
         """
         raise NotImplementedError
 
-    def send(self, reply: Reply, context):
+    def send(self, reply: Reply, context: Context):
         """
         send message to user
         :param reply: reply by bot
@@ -29,5 +29,5 @@ class Channel(object):
         """
         raise NotImplementedError
 
-    def fetch_reply(self, context: Context) -> Reply:
-        return Bridge().fetch_reply(context)
+    def fetch_reply(self, query: Query, context: Context) -> Reply:
+        return Bridge().fetch_reply(query, context)

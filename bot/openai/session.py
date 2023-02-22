@@ -9,49 +9,63 @@ from .token import Token
 import hashlib
 
 
+# SessionSet -> Sessions -> Records
+# 会话组      -> 会话      -> 对话记录
 class SessionManager:
     def __init__(self, context: Context):
         self.context = context
         self.user_id = context.user_id
-        self.session_db = f'openai/{hashlib.md5(self.user_id.encode(encoding="UTF-8")).hexdigest()}.json'
-        self.t_user_profile = 'user_profile'
-        self.t_sessions_profile = 'sessions_profile'
+        self.user_name = context.user_name
+        self.group_id = context.group_id
+        self.is_group_chat = context.is_group_chat
+        self.ss_id = self.group_id if self.is_group_chat else self.user_id
 
-        if not self.user_profile:
+        self.session_db = f'openai/sessions/' \
+                          f'{"group" if self.is_group_chat else "user"}/' \
+                          f'{hashlib.md5(self.ss_id.encode(encoding="UTF-8")).hexdigest()}.json'
+        self.t_session_set = 'session_set'
+        self.t_sessions = 'sessions'
+
+        if not self.session_set:
             # init user profile for new user
-            self.set_user_profile(
-                user_id=self.user_id, joined_session='', platform=self.context.platform, state=1)
+            self.set_session_set(
+                ss_id=self.ss_id,
+                is_group_chat=self.is_group_chat,
+                joined_session='',
+                platform=self.context.platform,
+                created_at=int(arrow.now().float_timestamp * 1000),
+                state=1)
 
     @property
-    def user_profile(self):
+    def session_set(self):
         with TinyDBHelper.db(self.session_db) as db:
-            _t = db.table(self.t_user_profile)
+            _t = db.table(self.t_session_set)
             _tmp = _t.get(doc_id=0)
             return _tmp if _tmp else dict()
 
-    def set_user_profile(self, **kwargs):
+    def set_session_set(self, **kwargs):
         with TinyDBHelper.db(self.session_db) as db:
-            _t = db.table(self.t_user_profile)
+            _t = db.table(self.t_session_set)
             _t.upsert(Document(kwargs, doc_id=0))
 
     @property
     def sessions(self):
         with TinyDBHelper.db(self.session_db) as db:
-            _t = db.table(self.t_sessions_profile)
+            _t = db.table(self.t_sessions)
             _tmp = _t.all()
             return _tmp
 
     def get_session(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
             qry = Query()
-            _t = db.table(self.t_sessions_profile)
+            _t = db.table(self.t_sessions)
             _tmp = _t.search(qry.session_id == session_id)
             return _tmp[0] if _tmp else dict()
 
     def set_session(self, session_id, **kwargs):
         with TinyDBHelper.db(self.session_db) as db:
             qry = Query()
-            _t = db.table(self.t_sessions_profile)
+            _t = db.table(self.t_sessions)
             kwargs.update({
                 'session_id': session_id,
             })
@@ -67,17 +81,17 @@ class SessionManager:
         if not character:
             character = Config.openai('character')
 
-        session_id = IntEncoder.encode_now()
-        self.set_session(session_id, title=title, character=character)
+        session_id = IntEncoder.encode_now(prefix='session')
+        self.set_session(session_id, title=title, character=character, created_at=int(arrow.now().float_timestamp * 1000))
         return session_id
 
     def join_session(self, session_id):
-        self.set_user_profile(joined_session=session_id)
+        self.set_session_set(joined_session=session_id)
         return self.get_session(session_id)
 
     @property
     def joined_session(self):
-        session_id = self.user_profile.get('joined_session', '')
+        session_id = self.session_set.get('joined_session', '')
         if not session_id:
             session_id = self.new_session()
             return self.join_session(session_id)
@@ -98,6 +112,13 @@ class SessionManager:
         self._discard_exceed_records(_records, max_tokens)
         return _records
 
+    def get_all_records(self, session_id):
+        with TinyDBHelper.db(self.session_db) as db:
+            _t = db.table(session_id)
+            _tmp = _t.all()
+            _tmp.sort(key=lambda x: x['created_at'], reverse=False)
+            return _tmp
+
     @classmethod
     def _discard_exceed_records(cls, records, max_tokens):
         count = 0
@@ -117,9 +138,12 @@ class SessionManager:
         with TinyDBHelper.db(self.session_db) as db:
             _t = db.table(session_id)
             _t.insert({
+                'id': IntEncoder.encode_now(prefix='id'),
                 'action': 'reset',
                 'question': '',
                 'answer': '',
+                'user_id': self.user_id,
+                'user_name': self.user_name,
                 'created_at': int(arrow.now().float_timestamp * 1000),
             })
 
@@ -131,9 +155,12 @@ class SessionManager:
         with TinyDBHelper.db(self.session_db) as db:
             _t = db.table(session_id)
             _t.insert({
+                'id': IntEncoder.encode_now(prefix='id'),
                 'action': 'add',
                 'question': question,
                 'answer': answer,
+                'user_id': self.user_id,
+                'user_name': self.user_name,
                 'created_at': int(arrow.now().float_timestamp * 1000),
             })
 
@@ -154,10 +181,4 @@ class SessionManager:
 
 
 if __name__ == '__main__':
-    sm = SessionManager('bz')
-    # sm.new_session('音乐家', '你是666')
-    print(sm.get_session('qgShI6s'))
-    sm.add_record('qgShI6s', 'QQQ', 'AAA')
-    print(sm.build_prompt('qgShI6s', 'test'))
-    sm.join_session('qgShI6s')
-    print(sm.user_profile)
+    pass

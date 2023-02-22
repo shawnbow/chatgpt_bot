@@ -79,9 +79,9 @@ class DingTalk:
 
     @staticmethod
     def sender(context: Context) -> Optional[DingtalkChatbot]:
-        session_webhook = context.extra['session_webhook']
-        expired_time = context.extra['session_webhook_expired_time']
-        group_id = context.extra['conversation_id']
+        session_webhook = context.extra.get('sessionWebhook', None)
+        expired_time = context.extra.get('sessionWebhookExpiredTime', None)
+        group_id = context.extra.get('conversationId', None)
         _now = int(arrow.now().float_timestamp * 1000)
 
         if session_webhook and expired_time and _now < expired_time:
