@@ -35,7 +35,7 @@ class DingTalkChannel(Channel):
             user_name=msg.get('senderNick', 'ding_user'),
             group_id=msg.get('conversationId', 'ding_group'),
             group_name=msg.get('conversationTitle', 'ding_group'),
-            is_group_chat=(True if msg.get('conversationType', 1) == 2 else False),
+            is_group_chat=(True if msg.get('conversationType', '1') == '2' else False),
             platform='DingTalk',
             extra=msg
         )
