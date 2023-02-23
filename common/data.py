@@ -2,6 +2,7 @@ from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from collections import defaultdict
+import arrow
 
 
 @dataclass_json
@@ -22,7 +23,7 @@ class Query:
     msg_id: str = ''
     msg_type: str = ''
     msg: str = ''
-    created_at: int = 0
+    created_at: int = int(arrow.now().float_timestamp * 1000)
 
 
 @dataclass_json
@@ -31,5 +32,5 @@ class Reply:
     by: str = ''
     type: str = ''
     result: str = ''
-    msg: str = ''
-    created_at: int = 0
+    msg: any = None
+    created_at: int = int(arrow.now().float_timestamp * 1000)

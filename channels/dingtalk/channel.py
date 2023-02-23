@@ -64,10 +64,14 @@ class DingTalkChannel(Channel):
                 text=f'#### By DALL·E Model\n'
                      f'> ![]({reply.msg})\n'
                      f'> ###### {context.extra.get("text", {}).get("content", "")}\n')
+        elif reply.type == 'IMAGES':
+            images_md = '\n'.join([f'> ![]({i})' for i in reply.msg])
+            sender.send_markdown(
+                title='GPT',
+                text=f'#### By OpenAI\n'
+                     f'{images_md}\n'
+                     f'> ###### {context.extra.get("text", {}).get("content", "")}\n')
         else:
-            if MarkdownUtils.has_markdown(reply.msg):
-                sender.send_markdown(title='GPT', text=reply.msg)
-            else:
-                sender.send_text(reply.msg)
+            sender.send_text(reply.msg)
 
         logger.debug(f'[DT] send reply(by={reply.by}, type={reply.type}, result={reply.result}, msg={reply.msg}).')

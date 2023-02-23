@@ -4,6 +4,7 @@ import openai
 import time
 from bot.bot import Bot
 from config import Config
+from common.utils import MarkdownUtils
 from common.log import logger
 from common.data import Reply
 from .session import SessionManager
@@ -106,7 +107,9 @@ class OpenAIBot(Bot):
                 for s in sessions:
                     if s['session_id'] == session_id:
                         session = sm.join_session(session_id)
-                        return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'切换对话: ID: {session["session_id"]}, 标题: {session["title"]}, 性格: {session["character"]}')
+                        return Reply(
+                            by='openai_cmd', type='TEXT', result='done',
+                            msg=f'切换对话 ID: {session["session_id"]}, 标题: {session["title"]}, 性格: {session["character"]}')
             return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'对话不存在!')
 
         elif query.startswith('重启对话'):
@@ -121,7 +124,7 @@ class OpenAIBot(Bot):
         elif query.startswith('标题%'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
-                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 标题设置为: {_tmp[1]}'
+                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 标题修改为: {_tmp[1]}'
                 sm.set_session(joined_session['session_id'], title=_tmp[1])
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
             else:
@@ -131,7 +134,7 @@ class OpenAIBot(Bot):
         elif query.startswith('性格%'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
-                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 性格设置为: {_tmp[1]}'
+                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 性格修改为: {_tmp[1]}'
                 sm.set_session(joined_session['session_id'], character=_tmp[1])
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
             else:
@@ -200,6 +203,9 @@ class OpenAIBot(Bot):
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
             logger.debug(f'[OPENAI] reply_text answer={answer}')
             sm.add_record(session_id, query, answer)
+            images = MarkdownUtils.extract_images(answer)
+            if images:
+                return Reply(by=f'reply_text', type='IMAGES', result='done', msg=images)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
 
         except openai.error.RateLimitError as e:
