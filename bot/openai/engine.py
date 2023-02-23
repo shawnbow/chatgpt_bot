@@ -72,7 +72,9 @@ class OpenAIBot(Bot):
             else:
                 new_session_id = sm.new_session()
             new_session = sm.join_session(new_session_id)
-            return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'新建对话: {new_session["title"]}, 性格: {new_session["character"]}')
+            return Reply(
+                by='openai_cmd', type='TEXT', result='done',
+                msg=f'新建对话ID: {new_session["session_id"]}, 标题: {new_session["title"]}, 性格: {new_session["character"]}')
 
         elif query.startswith('删除对话%'):
             _tmp = query.split('%', 1)
@@ -121,7 +123,7 @@ class OpenAIBot(Bot):
                 by='openai_cmd', type='TEXT', result='done',
                 msg=sm.build_prompt(joined_session['session_id'], ''))
 
-        elif query.startswith('标题%'):
+        elif query.startswith('标题'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
                 msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 标题修改为: {_tmp[1]}'
@@ -131,7 +133,7 @@ class OpenAIBot(Bot):
                 msg = joined_session.get('title')
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'对话{joined_session["session_id"]}的标题是: {msg}')
 
-        elif query.startswith('性格%'):
+        elif query.startswith('性格'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
                 msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 性格修改为: {_tmp[1]}'
