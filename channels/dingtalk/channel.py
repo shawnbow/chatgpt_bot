@@ -65,7 +65,7 @@ class DingTalkChannel(Channel):
                      f'> ![]({reply.msg})\n'
                      f'> ###### {context.extra.get("text", {}).get("content", "")}\n')
         else:
-            if MarkdownUtils.has_markdown(context.extra.get("text", {}).get("content", "")):
+            if MarkdownUtils.has_markdown(reply.msg):
                 sender.send_markdown(title='GPT', text=reply.msg)
             else:
                 sender.send_text(reply.msg)
