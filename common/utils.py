@@ -15,8 +15,33 @@ class MarkdownUtils:
 
     @classmethod
     def has_markdown(cls, s: str):
-        pattern = r'(^#{1,6}|\*|\*\*|__|`)'  # Regex pattern to match common Markdown syntax
-        return bool(re.search(pattern, s))
+        def has_markdown(text):
+            # Check for headings
+            if re.search(r'^#{1,6}\s', text, re.MULTILINE):
+                return True
+
+            # Check for blockquotes
+            if re.search(r'^>\s', text, re.MULTILINE):
+                return True
+
+            # Check for bold and italic
+            if re.search(r'(\*\*|__|\*|_).+(\*\*|__|\*|_)', text):
+                return True
+
+            # Check for links
+            if re.search(r'\[.+\]\(.+\)', text):
+                return True
+
+            # Check for images
+            if re.search(r'!\[.+\]\(.+\)', text):
+                return True
+
+            # Check for unordered and ordered lists
+            if re.search(r'^(\*|-|\d+\.)\s', text, re.MULTILINE):
+                return True
+
+            # No Markdown found
+            return False
 
 
 # 数字编码器
