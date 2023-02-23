@@ -31,6 +31,6 @@
     "code_model": "code-davinci-002",
     "max_query_tokens": 2000,
     "max_reply_tokens": 2000,
-    "character": "你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。"
+    "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
 }
