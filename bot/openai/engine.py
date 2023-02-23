@@ -50,15 +50,16 @@ class OpenAIBot(Bot):
 
         if query.startswith('help') or query == '':
             msg = \
-                '命令格式如下: \n' \
-                '/help\n' \
-                '/新建对话%[标题]%[性格]\n' \
-                '/对话列表\n' \
-                '/切换对话%<对话ID>\n' \
-                '/重启对话\n' \
-                '/最近对话\n' \
-                '/性格\n' \
-                '/性格%你是666, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。\n'
+                f'命令格式如下: \n' \
+                f'/help\n' \
+                f'/新建对话%[标题]%[性格]\n' \
+                f'/删除对话%<对话ID>\n' \
+                f'/对话列表\n' \
+                f'/切换对话%<对话ID>\n' \
+                f'/重启对话\n' \
+                f'/最近对话\n' \
+                f'/标题%[新标题]\n' \
+                f'/性格%[{Config.openai("character")}]\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
 
         elif query.startswith('新建对话'):
@@ -71,6 +72,20 @@ class OpenAIBot(Bot):
                 new_session_id = sm.new_session()
             new_session = sm.join_session(new_session_id)
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'新建对话: {new_session["title"]}, 性格: {new_session["character"]}')
+
+        elif query.startswith('删除对话%'):
+            _tmp = query.split('%', 1)
+            if len(_tmp) == 2:
+                session_id = _tmp[1].strip()
+                sessions = sm.sessions
+                for s in sessions:
+                    if s['session_id'] == session_id:
+                        if joined_session['session_id'] != session_id:
+                            sm.remove_session(session_id)
+                            return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'已删除对话: {session_id}')
+                        else:
+                            return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'无法删除当前对话: {session_id}')
+            return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'对话不存在!')
 
         elif query.startswith('对话列表'):
             sessions = sm.sessions
@@ -86,12 +101,12 @@ class OpenAIBot(Bot):
         elif query.startswith('切换对话%'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
-                sessions = sm.sessions
                 session_id = _tmp[1].strip()
+                sessions = sm.sessions
                 for s in sessions:
                     if s['session_id'] == session_id:
                         session = sm.join_session(session_id)
-                        return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'切换对话: {session["title"]}, 性格: {session["character"]}')
+                        return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'切换对话: ID: {session["session_id"]}, 标题: {session["title"]}, 性格: {session["character"]}')
             return Reply(by='openai_cmd', type='TEXT', result='error', msg=f'对话不存在!')
 
         elif query.startswith('重启对话'):
@@ -103,15 +118,25 @@ class OpenAIBot(Bot):
                 by='openai_cmd', type='TEXT', result='done',
                 msg=sm.build_prompt(joined_session['session_id'], ''))
 
-        elif query.startswith('性格'):
+        elif query.startswith('标题%'):
             _tmp = query.split('%', 1)
             if len(_tmp) == 2:
-                sm.set_session(joined_session['session_id'], character=_tmp[1])
-                msg = f'对话{joined_session["title"]}的性格设置为: {_tmp[1]}'
+                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 标题设置为: {_tmp[1]}'
+                sm.set_session(joined_session['session_id'], title=_tmp[1])
                 return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
             else:
-                msg = joined_session.get('character', Config.openai('character'))
-                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'对话{joined_session["title"]}的性格是: {msg}')
+                msg = joined_session.get('title')
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'对话{joined_session["session_id"]}的标题是: {msg}')
+
+        elif query.startswith('性格%'):
+            _tmp = query.split('%', 1)
+            if len(_tmp) == 2:
+                msg = f'对话ID: {joined_session["session_id"]}, 标题: {joined_session["title"]}, 性格: {joined_session["character"]}, 性格设置为: {_tmp[1]}'
+                sm.set_session(joined_session['session_id'], character=_tmp[1])
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
+            else:
+                msg = joined_session.get('character')
+                return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'对话{joined_session["session_id"]}的性格是: {msg}')
 
         else:
             return Reply(by='openai_cmd', type='TEXT', result='error', msg='不支持该命令!')

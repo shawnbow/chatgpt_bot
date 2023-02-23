@@ -1,5 +1,6 @@
 import os
 import math
+import re
 import base64
 import time
 import threading
@@ -8,6 +9,14 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from collections import defaultdict
 from functools import wraps
+
+
+class MarkdownUtils:
+
+    @classmethod
+    def has_markdown(cls, s: str):
+        pattern = r'(^#{1,6}|\*|\*\*|__|`)'  # Regex pattern to match common Markdown syntax
+        return bool(re.search(pattern, s))
 
 
 # 数字编码器

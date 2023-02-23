@@ -7,7 +7,7 @@ import json
 import arrow
 from concurrent.futures import ThreadPoolExecutor
 from config import Config
-from common.utils import IntEncoder
+from common.utils import IntEncoder, MarkdownUtils
 from common.data import Reply, Context, Query
 from common.log import logger
 from channels.channel import Channel
@@ -65,6 +65,9 @@ class DingTalkChannel(Channel):
                      f'> ![]({reply.msg})\n'
                      f'> ###### {context.extra.get("text", {}).get("content", "")}\n')
         else:
-            sender.send_text(reply.msg)
+            if MarkdownUtils.has_markdown(context.extra.get("text", {}).get("content", "")):
+                sender.send_markdown(title='GPT', text=reply.msg)
+            else:
+                sender.send_text(reply.msg)
 
         logger.debug(f'[DT] send reply(by={reply.by}, type={reply.type}, result={reply.result}, msg={reply.msg}).')

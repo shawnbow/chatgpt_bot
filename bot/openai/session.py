@@ -89,6 +89,11 @@ class SessionManager:
         self.set_session_set(joined_session=session_id)
         return self.get_session(session_id)
 
+    def remove_session(self, session_id):
+        self.clear_records(session_id)
+        with TinyDBHelper.db(self.session_db) as db:
+            db.drop_table(session_id)
+
     @property
     def joined_session(self):
         session_id = self.session_set.get('joined_session', '')
