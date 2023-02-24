@@ -8,6 +8,7 @@ from common.utils import MarkdownUtils
 from common.log import logger
 from common.data import Reply
 from .session import SessionManager
+from oss.qiniu_helper import Helper as Qiniu
 
 
 class OpenAIBot(Bot):
@@ -205,9 +206,10 @@ class OpenAIBot(Bot):
             answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
             logger.debug(f'[OPENAI] reply_text answer={answer}')
             sm.add_record(session_id, query, answer)
-            images = MarkdownUtils.extract_images(answer)
-            if images:
-                return Reply(by=f'reply_text', type='IMAGES', result='done', msg=images)
+            image_urls = MarkdownUtils.extract_images(answer)
+            if image_urls:
+                oss_urls = [Qiniu.upload_url(i) for i in image_urls]
+                return Reply(by=f'reply_text', type='IMAGES', result='done', msg=oss_urls)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
 
         except openai.error.RateLimitError as e:
@@ -237,6 +239,7 @@ class OpenAIBot(Bot):
                 size="512x512"   # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
+            image_url = Qiniu.upload_url(image_url)
             logger.debug(f'[OPENAI] reply_img answer={image_url}')
             return Reply(by='openai_img', type='IMAGE', result='done', msg=image_url)
         except openai.error.RateLimitError as e:

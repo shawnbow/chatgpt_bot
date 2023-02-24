@@ -1,8 +1,13 @@
 import os
+import io
 import math
 import re
 import base64
 import time
+import arrow
+import hashlib
+import requests
+from config import Config
 import threading
 from typing import List, Dict, Callable, Optional
 from datetime import datetime, timedelta
@@ -51,3 +56,22 @@ class BoostDict(defaultdict):
             raise KeyError(key)
         self[key] = ret = self.boost_factory(key)
         return ret
+
+
+class Downloader:
+    @classmethod
+    def fetch_file_bytes(cls, url, retry_count=0) -> (io.BytesIO, str, str):
+        try:
+            response = requests.get(url, stream=True)
+            bytes_io = io.BytesIO()
+            for chunk in response.iter_content(1024):
+                bytes_io.write(chunk)
+            _format = response.headers.get('content-type').split('/')
+            bytes_io.seek(0)
+            return bytes_io, _format[0], _format[1]
+        except Exception as e:
+            if retry_count < 2:
+                time.sleep(1)
+                return cls.fetch_file_bytes(url, retry_count+1)
+            else:
+                return None, '', ''

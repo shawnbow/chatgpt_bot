@@ -1,6 +1,13 @@
 {
   "db_path": "db",
   "log_path": "logs",
+  "qiniu": {
+    "bucket": "",
+    "url": "",
+    "access_key": "",
+    "secret_key": "",
+    "token_expires": 3600
+  },
   "dt": {
     "group_ids": ["cidxxxxxxxxxxxxx", "cidyyyyyyyyyyyyy"],
     "admin_user_id": "",
