@@ -212,6 +212,10 @@ class OpenAIBot(Bot):
                 return Reply(by=f'reply_text', type='IMAGES', result='done', msg=oss_urls)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
 
+        except openai.error.InvalidRequestError as e:
+            logger.warn(e)
+            return Reply(by=f'reply_text', type='TEXT', result='error', msg=f'对话上下文超过最大Token限制，建议重启对话')
+
         except openai.error.RateLimitError as e:
             # rate limit exception
             logger.warn(e)

@@ -36,7 +36,7 @@
     "image_prefix": ["*", "draw", "画", "看", "找"],
     "text_model": "text-davinci-003",
     "code_model": "code-davinci-002",
-    "max_query_tokens": 2000,
+    "max_query_tokens": 1000,
     "max_reply_tokens": 2000,
     "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
