@@ -6,3 +6,4 @@ DingtalkChatbot
 loguru
 oss2
 qiniu
+qingstor-sdk

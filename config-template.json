@@ -2,21 +2,28 @@
   "db_path": "db",
   "log_path": "logs",
   "oss": {
-      "aliyun": {
-        "bucket": "",
-        "endpoint": "",
-        "bucket_url": "",
-        "access_key": "",
-        "secret_key": ""
-      },
-      "qiniu": {
-        "bucket": "",
-        "bucket_url": "",
-        "access_key": "",
-        "secret_key": "",
-        "token_expires": 3600
-      }
+    "aliyun": {
+      "bucket": "",
+      "endpoint": "",
+      "bucket_url": "",
+      "access_key": "",
+      "secret_key": ""
+    },
+    "qing": {
+      "bucket": "",
+      "endpoint": "",
+      "bucket_url": "",
+      "access_key": "",
+      "secret_key": ""
+    },
+    "qiniu": {
+      "bucket": "",
+      "bucket_url": "",
+      "access_key": "",
+      "secret_key": "",
+      "token_expires": 3600
     }
+  },
   "dt": {
     "group_ids": ["cidxxxxxxxxxxxxx", "cidyyyyyyyyyyyyy"],
     "admin_user_id": "",

@@ -1,6 +1,7 @@
 from config import Config
 import arrow
-import oss2
+from qingstor.sdk.service.qingstor import QingStor
+from qingstor.sdk.config import Config as QingStorConfig
 from common.utils import Downloader
 from common.db import TinyDBHelper
 from tinydb import Query
@@ -10,32 +11,31 @@ import json
 import time
 from common.log import logger
 
-oss_config = Config.get('oss')['aliyun']
+oss_config = Config.get('oss')['qing']
 
 
 class Helper:
-    auth = oss2.Auth(oss_config['access_key'], oss_config['secret_key'])
+    qingstor = QingStor(QingStorConfig(oss_config['access_key'], oss_config['secret_key']))
 
     @classmethod
     def upload_url(cls, url, bucket=oss_config['bucket'], retry_count=0):
         data, file_type, file_ext = Downloader.fetch_file_data(url)
         if not data:
-            logger.debug(f'[ALY] failed to download {url}')
+            logger.debug(f'[QING] failed to download {url}')
             return None
         else:
-            logger.debug(f'[ALY] file {file_type}/{file_ext} {url} fetch to mem')
+            logger.debug(f'[QING] file {file_type}/{file_ext} {url} fetch to mem')
 
         _now = arrow.now().float_timestamp
         _date = arrow.now().format('YYYY_MM_DD')
         _hash = hashlib.md5((url + str(_now)).encode(encoding="UTF-8")).hexdigest()
         filename = f'{_date}/{file_type}/{_hash}{file_ext}'
-
-        _bucket = oss2.Bucket(cls.auth, oss_config['endpoint'], bucket)
-        ret = _bucket.put_object(filename, data=data)
-        logger.debug(f'[ALY] put_object return ret.request_id={ret.request_id}, ret.status={ret.status}, ret.etag={ret.etag}')
+        _bucket = cls.qingstor.Bucket(bucket, oss_config['endpoint'])
+        ret = _bucket.put_object(filename, body=data)
+        logger.debug(f'[QING] put_object return {ret.content}, ret.status={ret.status_code}')
 
         # 判断是否上传成功
-        if ret.status != 200:
+        if ret.status_code != 201:
             if retry_count < 2:
                 time.sleep(1)
                 return cls.upload_url(url, retry_count+1)
