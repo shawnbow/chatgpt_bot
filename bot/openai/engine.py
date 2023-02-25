@@ -208,7 +208,7 @@ class OpenAIBot(Bot):
             sm.add_record(session_id, query, answer)
             image_urls = MarkdownUtils.extract_images(answer)
             if image_urls:
-                oss_urls = [Qiniu.upload_url(i) for i in image_urls]
+                oss_urls = [Oss.upload_url(i) for i in image_urls]
                 return Reply(by=f'reply_text', type='IMAGES', result='done', msg=oss_urls)
             return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
 
