@@ -8,7 +8,7 @@ from common.utils import MarkdownUtils
 from common.log import logger
 from common.data import Reply
 from .session import SessionManager
-from oss.qiniu_helper import Helper as Qiniu
+from oss.aliyun_helper import Helper as Oss
 
 
 class OpenAIBot(Bot):
@@ -243,7 +243,7 @@ class OpenAIBot(Bot):
                 size="512x512"   # 图片大小,可选有 256x256, 512x512, 1024x1024
             )
             image_url = response['data'][0]['url']
-            image_url = Qiniu.upload_url(image_url)
+            image_url = Oss.upload_url(image_url)
             logger.debug(f'[OPENAI] reply_img answer={image_url}')
             return Reply(by='openai_img', type='IMAGE', result='done', msg=image_url)
         except openai.error.RateLimitError as e:
