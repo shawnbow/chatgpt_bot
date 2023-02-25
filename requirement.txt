@@ -4,3 +4,5 @@ tiktoken
 tinydb
 DingtalkChatbot
 loguru
+oss2
+qiniu

@@ -7,6 +7,7 @@ import time
 import arrow
 import hashlib
 import requests
+import mimetypes
 from config import Config
 import threading
 from typing import List, Dict, Callable, Optional
@@ -60,18 +61,20 @@ class BoostDict(defaultdict):
 
 class Downloader:
     @classmethod
-    def fetch_file_bytes(cls, url, retry_count=0) -> (io.BytesIO, str, str):
+    def fetch_file_data(cls, url, retry_count=0) -> (io.BytesIO, str, str):
         try:
             response = requests.get(url, stream=True)
             bytes_io = io.BytesIO()
             for chunk in response.iter_content(1024):
                 bytes_io.write(chunk)
-            _format = response.headers.get('content-type').split('/')
+            mime_type = response.headers.get('Content-Type')
+            file_type = mime_type.split('/')[0]
+            file_ext = mimetypes.guess_extension(mime_type)
             bytes_io.seek(0)
-            return bytes_io, _format[0], _format[1]
+            return bytes_io, file_type, file_ext
         except Exception as e:
             if retry_count < 2:
                 time.sleep(1)
-                return cls.fetch_file_bytes(url, retry_count+1)
+                return cls.fetch_file_data(url, retry_count+1)
             else:
                 return None, '', ''

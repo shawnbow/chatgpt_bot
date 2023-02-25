@@ -1,13 +1,22 @@
 {
   "db_path": "db",
   "log_path": "logs",
-  "qiniu": {
-    "bucket": "",
-    "url": "",
-    "access_key": "",
-    "secret_key": "",
-    "token_expires": 3600
-  },
+  "oss": {
+      "aliyun": {
+        "bucket": "",
+        "endpoint": "",
+        "bucket_url": "",
+        "access_key": "",
+        "secret_key": ""
+      },
+      "qiniu": {
+        "bucket": "",
+        "bucket_url": "",
+        "access_key": "",
+        "secret_key": "",
+        "token_expires": 3600
+      }
+    }
   "dt": {
     "group_ids": ["cidxxxxxxxxxxxxx", "cidyyyyyyyyyyyyy"],
     "admin_user_id": "",
@@ -40,4 +49,4 @@
     "max_reply_tokens": 2000,
     "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
-}
+},
