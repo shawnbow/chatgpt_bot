@@ -104,7 +104,7 @@ class SessionManager:
             return self.join_session(session_id)
         return self.get_session(session_id)
 
-    def get_records(self, session_id, max_tokens):
+    def get_records(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
             qry = Query()
             _t = db.table(session_id)
@@ -116,7 +116,6 @@ class SessionManager:
             else:
                 _records = _t.all()
             _records.sort(key=lambda x: x['created_at'], reverse=False)
-        self._discard_exceed_records(_records, max_tokens)
         return _records
 
     def get_all_records(self, session_id):
@@ -127,14 +126,14 @@ class SessionManager:
             return _tmp
 
     @classmethod
-    def _discard_exceed_records(cls, records, max_tokens):
+    def _discard_exceed_records(cls, records, max_tokens, character):
         count = 0
         count_list = list()
         for i in range(len(records)-1, -1, -1):
             # count tokens of conversation list
             _r = records[i]
             count += len(Token.get(_r["question"])) + len(Token.get(_r["answer"]))
-            count_list.append(count)
+            count_list.append(count + len(Token.get(character)))
 
         for c in count_list:
             if c > max_tokens:
@@ -171,20 +170,41 @@ class SessionManager:
                 'created_at': int(arrow.now().float_timestamp * 1000),
             })
 
-    def build_prompt(self, session_id, query):
-        prompt = self.get_session(session_id).get('character', Config.openai('character'))
+    def build_chat_messages(self, session_id, query):
+        character = self.get_session(session_id).get('character', Config.openai('character'))
+        messages = [{'role': 'system', 'content': character}]
+        records = self.get_records(session_id)
+        self._discard_exceed_records(records, Config.openai('max_query_tokens'), character)
+        if records:
+            for _r in records:
+                messages.append(
+                    {'role': 'user', 'content': _r['question']}
+                )
+                messages.append(
+                    {'role': 'assistant', 'content': _r['answer']}
+                )
+
+        messages.append(
+            {'role': 'user', 'content': query}
+        )
+
+        return messages
+
+    def build_text_prompt(self, session_id, query):
+        character = self.get_session(session_id).get('character', Config.openai('character'))
+        prompt = character
         prompt += '\n#\n'
-        records = self.get_records(session_id, Config.openai('max_query_tokens'))
+        records = self.get_records(session_id)
+        self._discard_exceed_records(records, Config.openai('max_query_tokens'), character)
         if records:
             for _r in records:
                 prompt += 'Q: ' + _r["question"] + '\n' + \
                           'A: ' + _r["answer"] + \
                           '\n#\n'
-            prompt += "Q: " + query + '\n' + \
-                      'A: '
-            return prompt
-        else:
-            return prompt + "Q: " + query + "\nA: "
+
+        prompt += "Q: " + query + '\n' + 'A:'
+
+        return prompt
 
 
 if __name__ == '__main__':
