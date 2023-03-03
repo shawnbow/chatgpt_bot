@@ -9,18 +9,17 @@ class Token:
         'text-davinci-003': 4000,
         'text-davinci-002': 4000,
         'code-davinci-002': 4000,
+        'else': 2048,
     }
 
     @classmethod
-    def get(cls, string: str, model=Config.openai('chat_model')):
-        if model not in tiktoken.model.MODEL_TO_ENCODING.keys():
-            model = 'text-davinci-003'
+    def get(cls, string: str, model):
         return tiktoken.encoding_for_model(model).encode(string)
 
     @classmethod
-    def length(cls, string: str, model=Config.openai('chat_model')):
-        return len(Token.get(string, model=model))
+    def length(cls, string: str, model):
+        return len(Token.get(string, model))
 
     @classmethod
-    def max_tokens(cls, model=Config.openai('chat_model')):
-        return cls.MODEL_MAX_TOKENS.get(model, Config.openai('max_tokens'))
+    def max_tokens(cls, model):
+        return cls.MODEL_MAX_TOKENS.get(model, cls.MODEL_MAX_TOKENS['else'])

@@ -56,7 +56,6 @@
     "text_model": "text-davinci-003",
     "code_model": "code-davinci-002",
     "max_query_tokens": 1024,
-    "max_tokens": 4096,
     "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
 }

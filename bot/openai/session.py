@@ -127,31 +127,6 @@ class SessionManager:
             _tmp.sort(key=lambda x: x['created_at'], reverse=False)
             return _tmp
 
-    @classmethod
-    def _limit_tokens_records(cls, records, max_tokens, character):
-        char_tokens = Token.length(character)
-        count_tokens = 0
-        for i in range(len(records)-1, -1, -1):
-            # 反向索引records, 保留最近的对话上下文
-            _r = records[i]
-            _tokens = Token.length(_r["question"]) + Token.length(_r["answer"])
-
-            if count_tokens + _tokens + char_tokens > max_tokens:
-                return records[i+1:], count_tokens + char_tokens
-            else:
-                count_tokens += _tokens
-
-        return records, count_tokens + char_tokens
-
-    @classmethod
-    def calc_records_tokens(cls, records, character):
-        char_tokens = Token.length(character)
-        count_tokens = 0
-        for _r in records:
-            count_tokens += Token.length(_r["question"]) + Token.length(_r["answer"])
-
-        return count_tokens + char_tokens
-
     def reset_records(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
             _t = db.table(session_id)
@@ -182,11 +157,36 @@ class SessionManager:
                 'created_at': int(arrow.now().float_timestamp * 1000),
             })
 
-    def build_chat_messages(self, session_id, query):
+    @classmethod
+    def _limit_tokens_records(cls, records, max_tokens, character, model):
+        char_tokens = Token.length(character, model)
+        count_tokens = 0
+        for i in range(len(records)-1, -1, -1):
+            # 反向索引records, 保留最近的对话上下文
+            _r = records[i]
+            _tokens = Token.length(_r["question"], model) + Token.length(_r["answer"], model)
+
+            if count_tokens + _tokens + char_tokens > max_tokens:
+                return records[i+1:], count_tokens + char_tokens
+            else:
+                count_tokens += _tokens
+
+        return records, count_tokens + char_tokens
+
+    @classmethod
+    def calc_records_tokens(cls, records, character, model):
+        char_tokens = Token.length(character, model)
+        count_tokens = 0
+        for _r in records:
+            count_tokens += Token.length(_r["question"], model) + Token.length(_r["answer"], model)
+
+        return count_tokens + char_tokens
+
+    def build_chat_messages(self, session_id, query, model=Config.openai('chat_model')):
         character = self.get_session(session_id).get('character', self.config['character'])
         messages = [{'role': 'system', 'content': character}]
         records = self.get_reset_records(session_id)
-        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character)
+        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character, model)
 
         for _r in records:
             messages.append(
@@ -200,14 +200,14 @@ class SessionManager:
             {'role': 'user', 'content': query}
         )
 
-        return messages, tokens + Token.length(query)
+        return messages, tokens + Token.length(query, model)
 
-    def build_text_prompt(self, session_id, query):
+    def build_text_prompt(self, session_id, query, model=Config.openai('text_model')):
         character = self.get_session(session_id).get('character', self.config['character'])
         prompt = character
         prompt += '\n#\n'
         records = self.get_reset_records(session_id)
-        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character)
+        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character, model)
 
         for _r in records:
             prompt += 'Q: ' + _r["question"] + '\n' + \
@@ -216,7 +216,7 @@ class SessionManager:
 
         prompt += "Q: " + query + '\n' + 'A:'
 
-        return prompt, Token.length(prompt)
+        return prompt, Token.length(prompt, model)
 
 
 if __name__ == '__main__':
