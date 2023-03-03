@@ -9,13 +9,12 @@ from common.utils import MarkdownUtils
 from common.log import logger
 from common.data import Reply
 from .session import SessionManager
+from .token import Token
 from oss.aliyun_helper import Helper as Oss
 
 
 class OpenAIBot(Bot):
-    def __init__(self):
-        self.config = Config.openai()
-        openai.api_key = self.config['api_key']
+    config = Config.openai()
 
     @classmethod
     def prefix_parser(cls, query, prefix_list) -> (str, str):
@@ -66,7 +65,7 @@ class OpenAIBot(Bot):
                 f'/重启对话\n' \
                 f'/最近对话\n' \
                 f'/标题%[新标题]\n' \
-                f'/性格%[{Config.openai("character")}]\n'
+                f'/性格%[{self.config["character"]}]\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
 
         elif query.startswith('新建对话'):
@@ -127,7 +126,7 @@ class OpenAIBot(Bot):
         elif query.startswith('最近对话'):
             return Reply(
                 by='openai_cmd', type='TEXT', result='done',
-                msg=sm.build_text_prompt(joined_session['session_id'], ''))
+                msg=sm.build_text_prompt(joined_session['session_id'], '')[0])
 
         elif query.startswith('标题'):
             _tmp = query.split('%', 1)
@@ -156,10 +155,11 @@ class OpenAIBot(Bot):
         logger.debug(f'[OPENAI] reply_code query={query}')
 
         try:
-            prompt = query
             model = self.config['code_model']
-            max_tokens = self.config['max_reply_tokens']
-            logger.debug(f'[OPENAI] create completion model={model} prompt={query}')
+            prompt = query
+            tokens = Token.length(prompt, model)
+            max_tokens = Token.max_tokens(model) - tokens
+            logger.debug(f'[OPENAI] create code completion model={model}, tokens={tokens}, prompt={query}')
             response = openai.Completion.create(
                 model=model,  # 对话模型的名称
                 prompt=prompt,
@@ -195,9 +195,9 @@ class OpenAIBot(Bot):
 
         try:
             model = self.config['text_model']
-            max_tokens = self.config['max_reply_tokens']
-            prompt = sm.build_text_prompt(session_id, query)
-            logger.debug(f'[OPENAI] create completion model={model} prompt={prompt}')
+            prompt, tokens = sm.build_text_prompt(session_id, query)
+            max_tokens = Token.max_tokens(model) - tokens
+            logger.debug(f'[OPENAI] create text completion model={model}, tokens={tokens} , prompt={prompt}')
             response = openai.Completion.create(
                 model=model,  # 对话模型的名称
                 prompt=prompt,
@@ -235,7 +235,6 @@ class OpenAIBot(Bot):
         except Exception as e:
             # unknown exception
             logger.exception(e)
-            # sm.reset_records(session_id)
             return Reply(by=f'reply_text', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
     def reply_chat(self, query, context, retry_count=0):
@@ -247,9 +246,9 @@ class OpenAIBot(Bot):
 
         try:
             model = self.config['chat_model']
-            max_tokens = self.config['max_reply_tokens']
-            messages = sm.build_chat_messages(session_id, query)
-            logger.debug(f'[OPENAI] create completion model={model} message={json.dumps(messages, ensure_ascii=False)}')
+            messages, tokens = sm.build_chat_messages(session_id, query)
+            max_tokens = Token.max_token(model) - tokens
+            logger.debug(f'[OPENAI] create chat completion model={model}, tokens={tokens}, message={json.dumps(messages, ensure_ascii=False)}')
             response = openai.ChatCompletion.create(
                 model=model,  # 对话模型的名称
                 messages=messages,
@@ -287,7 +286,6 @@ class OpenAIBot(Bot):
         except Exception as e:
             # unknown exception
             logger.exception(e)
-            # sm.reset_records(session_id)
             return Reply(by=f'reply_chat', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
 
     def reply_img(self, query, context, retry_count=0):
@@ -315,3 +313,7 @@ class OpenAIBot(Bot):
         except Exception as e:
             logger.exception(e)
             return Reply(by='openai_img', type='TEXT', result='error', msg='图片生成失败, 请再问我一次吧!')
+
+
+openai.api_key = OpenAIBot.config['api_key']
+openai.proxy = OpenAIBot.config['proxy']

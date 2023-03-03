@@ -12,6 +12,8 @@ import hashlib
 # SessionSet -> Sessions -> Records
 # 会话组      -> 会话      -> 对话记录
 class SessionManager:
+    config = Config.openai()
+
     def __init__(self, context: Context):
         self.context = context
         self.user_id = context.user_id
@@ -79,7 +81,7 @@ class SessionManager:
             title = _now
 
         if not character:
-            character = Config.openai('character')
+            character = self.config['character']
 
         session_id = IntEncoder.encode_now(prefix='session')
         self.set_session(session_id, title=title, character=character, created_at=int(arrow.now().float_timestamp * 1000))
@@ -104,7 +106,7 @@ class SessionManager:
             return self.join_session(session_id)
         return self.get_session(session_id)
 
-    def get_records(self, session_id):
+    def get_reset_records(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
             qry = Query()
             _t = db.table(session_id)
@@ -126,19 +128,29 @@ class SessionManager:
             return _tmp
 
     @classmethod
-    def _discard_exceed_records(cls, records, max_tokens, character):
-        count = 0
-        count_list = list()
+    def _limit_tokens_records(cls, records, max_tokens, character):
+        char_tokens = Token.length(character)
+        count_tokens = 0
         for i in range(len(records)-1, -1, -1):
-            # count tokens of conversation list
+            # 反向索引records, 保留最近的对话上下文
             _r = records[i]
-            count += len(Token.get(_r["question"])) + len(Token.get(_r["answer"]))
-            count_list.append(count + len(Token.get(character)))
+            _tokens = Token.length(_r["question"]) + Token.length(_r["answer"])
 
-        for c in count_list:
-            if c > max_tokens:
-                # pop first record
-                records.pop(0)
+            if count_tokens + _tokens + char_tokens > max_tokens:
+                return records[i+1:], count_tokens + char_tokens
+            else:
+                count_tokens += _tokens
+
+        return records, count_tokens + char_tokens
+
+    @classmethod
+    def calc_records_tokens(cls, records, character):
+        char_tokens = Token.length(character)
+        count_tokens = 0
+        for _r in records:
+            count_tokens += Token.length(_r["question"]) + Token.length(_r["answer"])
+
+        return count_tokens + char_tokens
 
     def reset_records(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
@@ -171,40 +183,40 @@ class SessionManager:
             })
 
     def build_chat_messages(self, session_id, query):
-        character = self.get_session(session_id).get('character', Config.openai('character'))
+        character = self.get_session(session_id).get('character', self.config['character'])
         messages = [{'role': 'system', 'content': character}]
-        records = self.get_records(session_id)
-        self._discard_exceed_records(records, Config.openai('max_query_tokens'), character)
-        if records:
-            for _r in records:
-                messages.append(
-                    {'role': 'user', 'content': _r['question']}
-                )
-                messages.append(
-                    {'role': 'assistant', 'content': _r['answer']}
-                )
+        records = self.get_reset_records(session_id)
+        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character)
+
+        for _r in records:
+            messages.append(
+                {'role': 'user', 'content': _r['question']}
+            )
+            messages.append(
+                {'role': 'assistant', 'content': _r['answer']}
+            )
 
         messages.append(
             {'role': 'user', 'content': query}
         )
 
-        return messages
+        return messages, tokens + Token.length(query)
 
     def build_text_prompt(self, session_id, query):
-        character = self.get_session(session_id).get('character', Config.openai('character'))
+        character = self.get_session(session_id).get('character', self.config['character'])
         prompt = character
         prompt += '\n#\n'
-        records = self.get_records(session_id)
-        self._discard_exceed_records(records, Config.openai('max_query_tokens'), character)
-        if records:
-            for _r in records:
-                prompt += 'Q: ' + _r["question"] + '\n' + \
-                          'A: ' + _r["answer"] + \
-                          '\n#\n'
+        records = self.get_reset_records(session_id)
+        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character)
+
+        for _r in records:
+            prompt += 'Q: ' + _r["question"] + '\n' + \
+                      'A: ' + _r["answer"] + \
+                      '\n#\n'
 
         prompt += "Q: " + query + '\n' + 'A:'
 
-        return prompt
+        return prompt, Token.length(prompt)
 
 
 if __name__ == '__main__':

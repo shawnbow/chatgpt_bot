@@ -45,6 +45,7 @@
   },
   "openai": {
     "api_key": "YOUR API KEY",
+    "proxy": null,
     "retry_times": 2,
     "retry_interval": 3,
     "cmd_prefix": ["/", "cmd", "执行"],
@@ -54,8 +55,8 @@
     "chat_model": "gpt-3.5-turbo",
     "text_model": "text-davinci-003",
     "code_model": "code-davinci-002",
-    "max_query_tokens": 1000,
-    "max_reply_tokens": 2000,
+    "max_query_tokens": 1024,
+    "max_tokens": 4096,
     "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
 }
