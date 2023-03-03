@@ -247,7 +247,7 @@ class OpenAIBot(Bot):
         try:
             model = self.config['chat_model']
             messages, tokens = sm.build_chat_messages(session_id, query)
-            max_tokens = Token.max_token(model) - tokens
+            max_tokens = Token.max_tokens(model) - tokens
             logger.debug(f'[OPENAI] create chat completion model={model}, tokens={tokens}, message={json.dumps(messages, ensure_ascii=False)}')
             response = openai.ChatCompletion.create(
                 model=model,  # 对话模型的名称
