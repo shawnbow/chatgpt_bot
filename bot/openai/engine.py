@@ -124,9 +124,10 @@ class OpenAIBot(Bot):
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
 
         elif query.startswith('最近对话'):
+            _msg, tokens = sm.build_text_prompt(joined_session['session_id'], '', self.config['chat_model'])
             return Reply(
                 by='openai_cmd', type='TEXT', result='done',
-                msg=sm.build_text_prompt(joined_session['session_id'], '')[0])
+                msg=f'{_msg}\ntokens={tokens}')
 
         elif query.startswith('标题'):
             _tmp = query.split('%', 1)
@@ -195,7 +196,7 @@ class OpenAIBot(Bot):
 
         try:
             model = self.config['text_model']
-            prompt, tokens = sm.build_text_prompt(session_id, query)
+            prompt, tokens = sm.build_text_prompt(session_id, query, model)
             max_tokens = Token.max_tokens(model) - tokens
             logger.debug(f'[OPENAI] create text completion model={model}, tokens={tokens} , prompt={prompt}')
             response = openai.Completion.create(
@@ -246,7 +247,7 @@ class OpenAIBot(Bot):
 
         try:
             model = self.config['chat_model']
-            messages, tokens = sm.build_chat_messages(session_id, query)
+            messages, tokens = sm.build_chat_messages(session_id, query, model)
             max_tokens = Token.max_tokens(model) - tokens
             logger.debug(f'[OPENAI] create chat completion model={model}, tokens={tokens}, message={json.dumps(messages, ensure_ascii=False)}')
             response = openai.ChatCompletion.create(
