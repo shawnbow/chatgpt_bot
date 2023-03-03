@@ -229,7 +229,8 @@ class SessionManager:
         for _r in records:
             prompt += 'Q: ' + _r["question"] + '\n' + \
                       'A: ' + _r["answer"] + \
-                      '\n#\n' + f'Tokens: {tokens}'
+                      '\n#\n'
+        prompt += f'Tokens: {tokens}'
         return prompt
 
 
