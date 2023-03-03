@@ -106,7 +106,7 @@ class SessionManager:
             return self.join_session(session_id)
         return self.get_session(session_id)
 
-    def get_reset_records(self, session_id):
+    def get_recent_records(self, session_id):
         with TinyDBHelper.db(self.session_db) as db:
             qry = Query()
             _t = db.table(session_id)
@@ -158,65 +158,79 @@ class SessionManager:
             })
 
     @classmethod
-    def _limit_tokens_records(cls, records, max_tokens, character, model):
-        char_tokens = Token.length(character, model)
+    def _one_messages(cls, role, content, **kwargs):
+        msg = {'role': role, 'content': content}
+        msg.update(kwargs)
+        return [msg]
+
+    @classmethod
+    def _record_to_messages(cls, record):
+        return cls._one_messages('user', record['question']) + \
+               cls._one_messages('assistant', record['answer'])
+
+    @classmethod
+    def _records_to_messages(cls, records):
+        messages = []
+        for _r in records:
+            messages += cls._record_to_messages(_r)
+        return messages
+
+    @classmethod
+    def _cut_records(cls, records, max_tokens, character, query, model):
+        sys_messages = cls._one_messages('system', character)
+        sys_tokens = Token.length_messages(sys_messages, model=model)
+
+        query_messages = cls._one_messages('user', query)
+        query_tokens = Token.length_messages(query_messages, model=model)
+
         count_tokens = 0
         for i in range(len(records)-1, -1, -1):
             # 反向索引records, 保留最近的对话上下文
             _r = records[i]
-            _tokens = Token.length(_r["question"], model) + Token.length(_r["answer"], model)
 
-            if count_tokens + _tokens + char_tokens > max_tokens:
-                return records[i+1:], count_tokens + char_tokens
+            _tokens = Token.length_messages(cls._record_to_messages(_r), model=model)
+
+            if count_tokens + _tokens + sys_tokens + query_tokens > max_tokens:
+                return records[i+1:]
             else:
                 count_tokens += _tokens
 
-        return records, count_tokens + char_tokens
+        return records
 
-    @classmethod
-    def calc_records_tokens(cls, records, character, model):
-        char_tokens = Token.length(character, model)
-        count_tokens = 0
-        for _r in records:
-            count_tokens += Token.length(_r["question"], model) + Token.length(_r["answer"], model)
-
-        return count_tokens + char_tokens
-
-    def build_chat_messages(self, session_id, query, model=Config.openai('chat_model')):
+    def build_chat_messages(self, session_id, query, model):
         character = self.get_session(session_id).get('character', self.config['character'])
-        messages = [{'role': 'system', 'content': character}]
-        records = self.get_reset_records(session_id)
-        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character, model)
+        records = self.get_recent_records(session_id)
+        records = self._cut_records(records, self.config['max_query_tokens'], character, query, model)
 
-        for _r in records:
-            messages.append(
-                {'role': 'user', 'content': _r['question']}
-            )
-            messages.append(
-                {'role': 'assistant', 'content': _r['answer']}
-            )
+        sys_messages = self._one_messages('system', character)
+        records_messages = self._records_to_messages(records)
+        query_messages = self._one_messages('user', query)
 
-        messages.append(
-            {'role': 'user', 'content': query}
-        )
+        return sys_messages + records_messages + query_messages
 
-        return messages, tokens + Token.length(query, model)
-
-    def build_text_prompt(self, session_id, query, model=Config.openai('text_model')):
+    def recent_chat_content(self, session_id, model, num=-1):
         character = self.get_session(session_id).get('character', self.config['character'])
+        records = self.get_recent_records(session_id)
+        if num == 0:
+            # cutoff records
+            records = self._cut_records(records, self.config['max_query_tokens'], character, '', model)
+        elif num > 0:
+            # recent num? records
+            records = records[-num:]
+        else:
+            # all records
+            pass
+
+        tokens = Token.length_messages(
+            self._one_messages('system', character) + self._records_to_messages(records), model=model)
+
         prompt = character
         prompt += '\n#\n'
-        records = self.get_reset_records(session_id)
-        records, tokens = self._limit_tokens_records(records, self.config['max_query_tokens'], character, model)
-
         for _r in records:
             prompt += 'Q: ' + _r["question"] + '\n' + \
                       'A: ' + _r["answer"] + \
-                      '\n#\n'
-
-        prompt += "Q: " + query + '\n' + 'A:'
-
-        return prompt, Token.length(prompt, model)
+                      '\n#\n' + f'Tokens: {tokens}'
+        return prompt
 
 
 if __name__ == '__main__':

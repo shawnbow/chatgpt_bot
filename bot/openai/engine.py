@@ -37,14 +37,6 @@ class OpenAIBot(Bot):
         if _image_prefix:
             return self.reply_img(query, context)
 
-        _code_prefix, query = self.prefix_parser(query, self.config['code_prefix'])
-        if _code_prefix:
-            return self.reply_code(query, context)
-
-        _text_prefix, query = self.prefix_parser(query, self.config['text_prefix'])
-        if _text_prefix:
-            return self.reply_text(query, context)
-
         query = query.strip()
         return self.reply_chat(query, context)
 
@@ -63,7 +55,7 @@ class OpenAIBot(Bot):
                 f'/对话列表\n' \
                 f'/切换对话%<对话ID>\n' \
                 f'/重启对话\n' \
-                f'/最近对话\n' \
+                f'/最近对话%[N=0, 限制Tokens={self.config["max_query_tokens"]}的对话; N>0, 最近N条对话; N<0, 全部对话]\n' \
                 f'/标题%[新标题]\n' \
                 f'/性格%[{self.config["character"]}]\n'
             return Reply(by='openai_cmd', type='TEXT', result='done', msg=msg)
@@ -124,10 +116,14 @@ class OpenAIBot(Bot):
             return Reply(by='openai_cmd', type='TEXT', result='done', msg='对话已重启!')
 
         elif query.startswith('最近对话'):
-            _msg, tokens = sm.build_text_prompt(joined_session['session_id'], '', self.config['chat_model'])
-            return Reply(
-                by='openai_cmd', type='TEXT', result='done',
-                msg=f'{_msg}\ntokens={tokens}')
+            _tmp = query.split('%', 1)
+            if len(_tmp) == 2:
+                num = int(_tmp[1]) if _tmp[1].isdigit() else -1
+                msg = sm.recent_chat_content(joined_session['session_id'], self.config['chat_model'], num=num)
+            else:
+                msg = sm.recent_chat_content(joined_session['session_id'], self.config['chat_model'], num=0)
+
+            return Reply(by='openai_cmd', type='TEXT', result='done', msg=f'{msg}')
 
         elif query.startswith('标题'):
             _tmp = query.split('%', 1)
@@ -152,92 +148,6 @@ class OpenAIBot(Bot):
         else:
             return Reply(by='openai_cmd', type='TEXT', result='error', msg='不支持该命令!')
 
-    def reply_code(self, query, context, retry_count=0):
-        logger.debug(f'[OPENAI] reply_code query={query}')
-
-        try:
-            model = self.config['code_model']
-            prompt = query
-            tokens = Token.length(prompt, model)
-            max_tokens = Token.max_tokens(model) - tokens
-            logger.debug(f'[OPENAI] create code completion model={model}, tokens={tokens}, prompt={query}')
-            response = openai.Completion.create(
-                model=model,  # 对话模型的名称
-                prompt=prompt,
-                temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
-                max_tokens=max_tokens,  # 回复最大的字符数
-                top_p=1,
-                frequency_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
-                presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
-            )
-            answer = response.choices[0]['text'].strip()  # replace('<|endoftext|>', '')
-            logger.debug(f'[OPENAI] reply_code answer={answer}')
-            return Reply(by=f'reply_code', type='TEXT', result='done', msg=answer)
-        except openai.error.RateLimitError as e:
-            # rate limit exception
-            logger.warn(e)
-            if retry_count < self.config['retry_times']:
-                time.sleep(self.config['retry_interval'])
-                logger.warn(f'[OPENAI] completion rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_code(query, context, retry_count+1)
-            else:
-                return Reply(by=f'reply_code', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
-        except Exception as e:
-            # unknown exception
-            logger.exception(e)
-            return Reply(by=f'reply_code', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
-
-    def reply_text(self, query, context, retry_count=0):
-        logger.debug(f'[OPENAI] reply_text query={query}')
-
-        sm = SessionManager(context)
-        joined_session = sm.joined_session
-        session_id = joined_session['session_id']
-
-        try:
-            model = self.config['text_model']
-            prompt, tokens = sm.build_text_prompt(session_id, query, model)
-            max_tokens = Token.max_tokens(model) - tokens
-            logger.debug(f'[OPENAI] create text completion model={model}, tokens={tokens} , prompt={prompt}')
-            response = openai.Completion.create(
-                model=model,  # 对话模型的名称
-                prompt=prompt,
-                temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
-                max_tokens=max_tokens,  # 回复最大的字符数
-                top_p=1,
-                frequency_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
-                presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
-                stop=["\n#\n"]
-            )
-            usage = response.usage
-            answer = response.choices[0].text.strip()  # replace('<|endoftext|>', '')
-            logger.debug(f'[OPENAI] reply_text answer={answer}, usage={json.dumps(usage, ensure_ascii=False)}')
-            sm.add_record(session_id, query, answer)
-            image_urls = MarkdownUtils.extract_images(answer)
-            if image_urls:
-                oss_urls = [Oss.upload_url(i) for i in image_urls]
-                return Reply(by=f'reply_text', type='IMAGES', result='done', msg=oss_urls)
-            return Reply(by=f'reply_text', type='TEXT', result='done', msg=answer)
-
-        except openai.error.InvalidRequestError as e:
-            logger.warn(e)
-            return Reply(by=f'reply_text', type='TEXT', result='error', msg=f'对话上下文超过最大Token限制，建议重启对话')
-
-        except openai.error.RateLimitError as e:
-            # rate limit exception
-            logger.warn(e)
-            if retry_count < self.config['retry_times']:
-                time.sleep(self.config['retry_interval'])
-                logger.warn(f'[OPENAI] completion rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_text(query, context, retry_count+1)
-            else:
-                return Reply(by=f'reply_text', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
-
-        except Exception as e:
-            # unknown exception
-            logger.exception(e)
-            return Reply(by=f'reply_text', type='TEXT', result='error', msg='OpenAI出小差了, 请再问我一次吧!')
-
     def reply_chat(self, query, context, retry_count=0):
         logger.debug(f'[OPENAI] reply_chat query={query}')
 
@@ -247,8 +157,9 @@ class OpenAIBot(Bot):
 
         try:
             model = self.config['chat_model']
-            messages, tokens = sm.build_chat_messages(session_id, query, model)
-            max_tokens = Token.max_tokens(model) - tokens
+            messages = sm.build_chat_messages(session_id, query, model)
+            tokens = Token.length_messages(messages, model=model)
+            max_tokens = Token.max_tokens(model) - tokens - 128
             logger.debug(f'[OPENAI] create chat completion model={model}, tokens={tokens}, message={json.dumps(messages, ensure_ascii=False)}')
             response = openai.ChatCompletion.create(
                 model=model,  # 对话模型的名称
@@ -280,7 +191,7 @@ class OpenAIBot(Bot):
             if retry_count < self.config['retry_times']:
                 time.sleep(self.config['retry_interval'])
                 logger.warn(f'[OPENAI] completion rate limit exceed, 第{retry_count+1}次重试')
-                return self.reply_text(query, context, retry_count+1)
+                return self.reply_chat(query, context, retry_count+1)
             else:
                 return Reply(by=f'reply_chat', type='TEXT', result='error', msg='提问太快啦，请休息一下再问我吧!')
 
