@@ -177,11 +177,8 @@ class SessionManager:
 
     @classmethod
     def _cut_records(cls, records, max_tokens, character, query, model):
-        sys_messages = cls._one_messages('system', character)
-        sys_tokens = Token.length_messages(sys_messages, model=model)
-
-        query_messages = cls._one_messages('user', query)
-        query_tokens = Token.length_messages(query_messages, model=model)
+        fixed_tokens = Token.length_messages(
+            cls._one_messages('system', character) + cls._one_messages('user', query), model=model)
 
         count_tokens = 0
         for i in range(len(records)-1, -1, -1):
@@ -190,7 +187,7 @@ class SessionManager:
 
             _tokens = Token.length_messages(cls._record_to_messages(_r), model=model)
 
-            if count_tokens + _tokens + sys_tokens + query_tokens > max_tokens:
+            if count_tokens + _tokens + fixed_tokens > max_tokens:
                 return records[i+1:]
             else:
                 count_tokens += _tokens
