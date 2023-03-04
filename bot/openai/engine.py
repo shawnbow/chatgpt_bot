@@ -228,4 +228,4 @@ class OpenAIBot(Bot):
 
 
 openai.api_key = OpenAIBot.config['api_key']
-openai.proxy = OpenAIBot.config['proxy']
+openai.proxy = Config.proxy()

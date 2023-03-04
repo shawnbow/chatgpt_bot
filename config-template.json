@@ -1,6 +1,7 @@
 {
   "db_path": "db",
   "log_path": "logs",
+  "proxy": null,
   "oss": {
     "aliyun": {
       "bucket": "",
@@ -45,7 +46,6 @@
   },
   "openai": {
     "api_key": "YOUR API KEY",
-    "proxy": null,
     "retry_times": 2,
     "retry_interval": 3,
     "cmd_prefix": ["/", "cmd", "执行"],

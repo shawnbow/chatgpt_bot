@@ -60,10 +60,12 @@ class BoostDict(defaultdict):
 
 
 class Downloader:
+    proxies = {'http': Config.proxy(), 'https': Config.proxy()} if Config.proxy() else None
+
     @classmethod
     def fetch_file_data(cls, url, retry_count=0) -> (io.BytesIO, str, str):
         try:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, proxies=cls.proxies)
             bytes_io = io.BytesIO()
             for chunk in response.iter_content(1024):
                 bytes_io.write(chunk)

@@ -48,6 +48,10 @@ class Config:
         return f'{cls.workdir}/{cls.get("log_path", "logs")}'
 
     @classmethod
+    def proxy(cls):
+        return cls.get('proxy')
+
+    @classmethod
     def openai(cls, key=None):
         if not key:
             return cls.get('openai', {})
