@@ -16,6 +16,27 @@ from oss.aliyun_helper import Helper as Oss
 class OpenAIBot(Bot):
     config = Config.openai()
 
+    def chat(self, query):
+        model = self.config['chat_model']
+        messages = [{'role': 'user', 'content': query}]
+        tokens = Token.length_messages(messages, model=model)
+        max_tokens = Token.max_tokens(model) - Token.length_messages(messages, model=model) - 128
+        logger.debug(f'[OPENAI] chat model={model}, tokens={tokens}, message={json.dumps(messages, ensure_ascii=False)}')
+        response = openai.ChatCompletion.create(
+            model=model,  # 对话模型的名称
+            messages=messages,
+            temperature=0.9,  # 值在[0,1]之间，越大表示回复越具有不确定性
+            max_tokens=max_tokens,  # 回复最大的字符数
+            top_p=1,
+            frequency_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
+            presence_penalty=0.0,  # [-2,2]之间，该值越大则更倾向于产生不同的内容
+        )
+        usage = response.usage
+        role = response.choices[0].message.role.strip()
+        answer = response.choices[0].message.content.strip()
+        logger.debug(f'[OPENAI] reply_chat role={role}, answer={answer}, usage={json.dumps(usage, ensure_ascii=False)}')
+        return answer
+
     @classmethod
     def prefix_parser(cls, query, prefix_list) -> (str, str):
         query = query.strip()
