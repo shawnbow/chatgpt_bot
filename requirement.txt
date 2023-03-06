@@ -6,3 +6,10 @@ loguru
 oss2
 qiniu
 qingstor-sdk
+gradio
+streamlit
+panel
+arrow
+dataclasses_json
+fastnumbers
+six

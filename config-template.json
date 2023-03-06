@@ -46,6 +46,7 @@
   },
   "openai": {
     "api_key": "YOUR API KEY",
+    "api_base": null,
     "retry_times": 2,
     "retry_interval": 3,
     "cmd_prefix": ["/", "cmd", "执行"],

@@ -248,5 +248,10 @@ class OpenAIBot(Bot):
             return Reply(by='openai_img', type='TEXT', result='error', msg='图片生成失败, 请再问我一次吧!')
 
 
-openai.api_key = OpenAIBot.config['api_key']
-openai.proxy = Config.proxy()
+openai.api_key = Config.openai('api_key')
+
+if Config.proxy():
+    openai.proxy = Config.proxy()
+
+if Config.openai('api_base'):
+    openai.api_base = Config.openai('api_base')
