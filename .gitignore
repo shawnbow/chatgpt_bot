@@ -5,3 +5,7 @@ venv*
 *.pyc
 config.json
 QR.png
+.ipynb_checkpoints/
+.qiniu_pythonsdk_hostscache.json
+db/
+logs/
