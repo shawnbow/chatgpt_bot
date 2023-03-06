@@ -1,7 +1,7 @@
 from config import Config
 import arrow
 import qiniu
-from common.utils import Downloader
+from common.utils import Fetcher
 from common.db import TinyDBHelper
 from tinydb import Query
 from tinydb.table import Document
@@ -45,7 +45,7 @@ class Helper:
 
     @classmethod
     def upload_url(cls, url, bucket=oss_config['bucket'], retry_count=0):
-        data, file_type, file_ext = Downloader.fetch_file_data(url)
+        data, file_type, file_ext = Fetcher.fetch_file_data(url)
         if not data:
             logger.debug(f'[QN] failed to download {url}')
             return None

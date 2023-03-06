@@ -59,7 +59,7 @@ class BoostDict(defaultdict):
         return ret
 
 
-class Downloader:
+class Fetcher:
     proxies = {'http': Config.proxy(), 'https': Config.proxy()} if Config.proxy() else None
 
     @classmethod
