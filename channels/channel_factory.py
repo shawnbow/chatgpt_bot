@@ -12,4 +12,6 @@ def create_channel(channel_type):
     if channel_type == 'dt':
         from channels.dingtalk.channel import DingTalkChannel
         return DingTalkChannel()
+    if channel_type == 'gradio':
+        pass
     raise RuntimeError

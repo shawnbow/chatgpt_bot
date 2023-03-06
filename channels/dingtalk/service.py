@@ -81,20 +81,11 @@ class DingTalk:
     def sender(context: Context) -> Optional[DingtalkChatbot]:
         session_webhook = context.extra.get('sessionWebhook', None)
         expired_time = context.extra.get('sessionWebhookExpiredTime', None)
-        group_id = context.extra.get('conversationId', None)
         _now = int(arrow.now().float_timestamp * 1000)
 
         if session_webhook and expired_time and _now < expired_time:
             # session webhook not expired
             return DingtalkChatbot(session_webhook)
-
-        if group_id:
-            # use group bot webhook config
-            webhook = Config.dt('webhooks').get(group_id, {})
-            webhook_token = webhook.get('webhook_token', None)
-            webhook_secret = webhook.get('webhook_secret', None)
-            if webhook_token:
-                return DingtalkChatbot(webhook_token, secret=webhook_secret)
 
         return None
 

@@ -26,27 +26,17 @@
     }
   },
   "dt": {
-    "group_ids": ["cidxxxxxxxxxxxxx", "cidyyyyyyyyyyyyy"],
     "admin_user_id": "",
     "server_url": "/",
     "server_port": "80",
     "agent_id": "YOUR AgentId",
     "app_key": "YOUR AppKey",
-    "app_secret": "YOUR AppSecret",
-    "webhooks": {
-      "cidxxxxxxxxxxxxx": {
-        "webhook_token": "",
-        "webhook_secret": null
-      },
-      "cidyyyyyyyyyyyyy": {
-        "webhook_token": "",
-        "webhook_secret": null
-      }
-    }
+    "app_secret": "YOUR AppSecret"
   },
   "openai": {
     "api_key": "YOUR API KEY",
     "api_base": null,
+    "use_proxy": false,
     "retry_times": 2,
     "retry_interval": 3,
     "cmd_prefix": ["/", "cmd", "执行"],

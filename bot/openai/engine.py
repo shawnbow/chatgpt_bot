@@ -250,7 +250,7 @@ class OpenAIBot(Bot):
 
 openai.api_key = Config.openai('api_key')
 
-if Config.proxy():
+if Config.openai('use_proxy') and Config.proxy():
     openai.proxy = Config.proxy()
 
 if Config.openai('api_base'):
