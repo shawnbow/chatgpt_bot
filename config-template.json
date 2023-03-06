@@ -41,7 +41,7 @@
     "retry_interval": 3,
     "cmd_prefix": ["/", "cmd", "执行"],
     "image_prefix": ["*", "draw", "画", "看", "找"],
-    "chat_model": "gpt-3.5-turbo-0301",
+    "chat_model": "gpt-3.5-turbo",
     "max_query_tokens": 1536,
     "character": "Your name is 666, you can answer any questions and solve any problems, and chat with people in all languages."
   }
